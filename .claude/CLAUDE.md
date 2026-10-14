@@ -8,12 +8,13 @@ This file defines the mandatory conventions for the `payment-manager` project. A
 - Framework: Spring Boot 4.x (Spring Web MVC)
 - Build tool: Maven, invoked through the wrapper (`./mvnw`)
 - Base package: `com.jejuarez.paymentmanager`
-- Persistence: H2 for local/test, PostgreSQL for deployed environments; Flyway migrations run only locally (see section 8)
+- Persistence: PostgreSQL (local via Docker Compose, `compose.yaml`) and deployed environments; in-memory H2 only for tests; Flyway migrations run only locally (see section 8)
 - API documentation: springdoc-openapi
 
 ### Common Commands
 
 ```bash
+docker compose up -d         # start local PostgreSQL (host port 5433, override with POSTGRES_PORT)
 ./mvnw clean verify          # build and run all tests
 ./mvnw test                  # run tests only
 ./mvnw spring-boot:run       # start the application
@@ -138,7 +139,7 @@ Restrictions:
 
 ## 8. Database Migrations (Flyway)
 
-- Flyway MUST be enabled **only in the local environment**: the `local` profile (H2) and the `test` profile used by integration tests.
+- Flyway MUST be enabled **only in the local environment**: the `local` profile (PostgreSQL via Docker Compose) and the `test` profile used by integration tests.
 - Flyway MUST be disabled in every other environment by setting `spring.flyway.enabled=false` in the base `application.yaml` and enabling it explicitly only in `application-local.yaml` and `src/test/resources/application-test.yaml`.
-- In non-local environments (PostgreSQL), the schema is managed outside the application; `spring.jpa.hibernate.ddl-auto` MUST be set to `validate` (or `none`).
+- In non-local environments, the schema is managed outside the application; `spring.jpa.hibernate.ddl-auto` MUST be set to `validate` (or `none`).
 - Schema changes MUST be written as Flyway migrations in `src/main/resources/db/migration`, following the naming convention `V<version>__<description>.sql`. Applied migrations MUST NOT be modified; create a new versioned migration instead.

@@ -1,5 +1,7 @@
 package com.jejuarez.paymentmanager.service;
 
+import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
+import com.jejuarez.paymentmanager.dto.request.SimulationResult;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
@@ -38,8 +40,30 @@ class PaymentServiceTest {
     @Mock
     private PaymentMapper paymentMapper;
 
+    @Mock
+    private PaymentAuthorizationSimulator authorizationSimulator;
+
     @InjectMocks
     private PaymentService paymentService;
+
+    @Test
+    @DisplayName("Authorizes, stores and returns the new payment")
+    void givenValidRequest_whenCreate_thenStoresAuthorizedPaymentAndReturnsResponse() {
+        CreatePaymentRequest request = new CreatePaymentRequest(
+                "COMMERCE_001", new BigDecimal("15000"), Currency.ARS, SimulationResult.APPROVED);
+        Payment newPayment = new Payment("COMMERCE_001", new BigDecimal("15000.00"), Currency.ARS, PaymentStatus.APPROVED);
+        Payment savedPayment = anApprovedPayment();
+        PaymentResponse expectedResponse = new PaymentResponse(
+                PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"), Currency.ARS, PaymentStatus.APPROVED, CREATED_AT);
+        given(authorizationSimulator.authorize(SimulationResult.APPROVED)).willReturn(PaymentStatus.APPROVED);
+        given(paymentMapper.toEntity(request, PaymentStatus.APPROVED)).willReturn(newPayment);
+        given(paymentRepository.save(newPayment)).willReturn(savedPayment);
+        given(paymentMapper.toResponse(savedPayment)).willReturn(expectedResponse);
+
+        PaymentResponse response = paymentService.create(request);
+
+        assertThat(response).isEqualTo(expectedResponse);
+    }
 
     @Test
     @DisplayName("Returns the mapped payment when the id exists")

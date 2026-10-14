@@ -97,7 +97,8 @@ void givenExistingPayment_whenFindById_thenReturnsPaymentResponse() {
 - H2 configuration for tests MUST be defined in `src/test/resources/application-test.yaml`, and integration test classes MUST activate it with `@ActiveProfiles("test")`.
 - H2 MUST run in PostgreSQL compatibility mode (e.g., `jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH`) so that the SQL migrations behave consistently with PostgreSQL.
 - The schema MUST be created by the Flyway migrations (Flyway is enabled for the `test` profile, as it runs locally); `spring.jpa.hibernate.ddl-auto` MUST be set to `validate` (or `none`), never `create` or `update`.
-- Integration test classes MUST use the `IT` suffix (e.g., `PaymentControllerIT`) and follow the same BDD naming rules described above. They are executed by the `maven-failsafe-plugin` during `verify`.
+- Integration tests MUST be organized by use case, one class per use case (e.g., `CreatePaymentIT`, `GetPaymentByIdIT`), in the `integration` test package. They MUST extend `IntegrationTestSupport`, which holds the shared Spring Boot test configuration and data cleanup.
+- Integration test classes MUST use the `IT` suffix and follow the same BDD naming rules described above. They are executed by the `maven-failsafe-plugin` during `verify`.
 - Each test MUST be independent and leave no residual data, for example by using `@Transactional` rollback or cleaning the affected tables before each test.
 
 ## 3. DTOs as Java Records

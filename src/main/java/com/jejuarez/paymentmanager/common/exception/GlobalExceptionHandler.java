@@ -29,16 +29,22 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final String VALIDATION_TITLE = "Validation failed";
+    public static final String INTERNAL_SERVER_ERROR = "Internal server error";
+    public static final String RESOURCE_NOT_FOUND = "Resource not found";
+    public static final String AN_UNEXPECTED_ERROR_OCCURRED = "An unexpected error occurred";
+    public static final String UNEXPECTED_ERROR = "Unexpected error";
+    public static final String INVALID = "is invalid";
+    public static final String REQUEST_HAS_INVALID_FIELDS = "Request has invalid fields";
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ProblemDetail handleResourceNotFound(ResourceNotFoundException exception) {
-        return problemDetail(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage());
+        return problemDetail(HttpStatus.NOT_FOUND, RESOURCE_NOT_FOUND, exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception exception) {
-        log.error("Unexpected error", exception);
-        return problemDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", "An unexpected error occurred");
+        log.error(UNEXPECTED_ERROR, exception);
+        return problemDetail(HttpStatus.INTERNAL_SERVER_ERROR, INTERNAL_SERVER_ERROR, AN_UNEXPECTED_ERROR_OCCURRED);
     }
 
     @Override
@@ -47,10 +53,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         Map<String, String> errors = exception.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(
                         FieldError::getField,
-                        fieldError -> Objects.requireNonNullElse(fieldError.getDefaultMessage(), "is invalid"),
+                        fieldError -> Objects.requireNonNullElse(fieldError.getDefaultMessage(), INVALID),
                         (first, second) -> first,
                         LinkedHashMap::new));
-        ProblemDetail body = problemDetail(HttpStatus.BAD_REQUEST, VALIDATION_TITLE, "Request has invalid fields");
+        ProblemDetail body = problemDetail(HttpStatus.BAD_REQUEST, VALIDATION_TITLE, REQUEST_HAS_INVALID_FIELDS);
         body.setProperty("errors", errors);
         return handleExceptionInternal(exception, body, headers, HttpStatus.BAD_REQUEST, request);
     }

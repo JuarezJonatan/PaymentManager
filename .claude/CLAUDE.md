@@ -15,8 +15,8 @@ This file defines the mandatory conventions for the `payment-manager` project. A
 
 ```bash
 docker compose up -d         # start local PostgreSQL (host port 5433, override with POSTGRES_PORT)
-./mvnw clean verify          # build and run all tests
-./mvnw test                  # run tests only
+./mvnw clean verify          # build and run all tests (unit tests via Surefire, *IT via Failsafe)
+./mvnw test                  # run unit tests only (*IT classes are NOT executed)
 ./mvnw spring-boot:run       # start the application
 ```
 
@@ -45,14 +45,18 @@ Organize the code by layer under the base package:
 com.jejuarez.paymentmanager
 ├── controller
 ├── service
-├── repository
-├── entity
+├── persistence
+│   ├── entity
+│   └── repository
 ├── dto
 │   ├── request
 │   └── response
 ├── mapper
-└── exception
+└── common
+    └── exception
 ```
+
+`common` holds only cross-cutting code shared by any resource (e.g., exceptions and the global exception handler). Resource-specific classes (DTOs, mappers) MUST NOT be placed in `common`.
 
 ## 2. Behavior-Driven Development (BDD)
 
@@ -61,9 +65,10 @@ All features MUST be developed following BDD principles, with tests expressing t
 - Test method names MUST fully describe the scenario using the **given / when / then** structure, so that no explanatory comments are required.
 - Naming format: `given<Precondition>_when<Action>_then<ExpectedOutcome>`
   - Example: `givenExistingPayment_whenFindById_thenReturnsPayment`
-  - Example: `givenNonExistentPaymentId_whenFindById_thenThrowsPaymentNotFoundException`
+  - Example: `givenNonExistentPaymentId_whenFindById_thenThrowsResourceNotFoundException`
   - Example: `givenInvalidAmount_whenCreatePayment_thenReturnsBadRequest`
 - Comments such as `// given`, `// when`, `// then` (or `// arrange`, `// act`, `// assert`) are **forbidden**. The three phases MUST be separated only by a blank line, and the intent MUST be conveyed through descriptive method names and well-named variables.
+- Every test class and test method MUST have a JUnit `@DisplayName` with a short, human-readable English sentence describing the behavior (e.g., `@DisplayName("GET /payments/{id} returns 404 when the payment does not exist")`). The method name keeps the `given_when_then` format.
 - Use Mockito's BDD API (`BDDMockito.given(...)`, `then(...).should(...)`) instead of `when(...)` / `verify(...)`.
 - Use AssertJ (`assertThat`) for assertions.
 - Each test MUST verify a single behavior.
@@ -73,6 +78,7 @@ Example:
 
 ```java
 @Test
+@DisplayName("Returns the mapped payment when the id exists")
 void givenExistingPayment_whenFindById_thenReturnsPaymentResponse() {
     Payment payment = aPaymentWithId(PAYMENT_ID);
     PaymentResponse expectedResponse = aPaymentResponseWithId(PAYMENT_ID);
@@ -91,7 +97,7 @@ void givenExistingPayment_whenFindById_thenReturnsPaymentResponse() {
 - H2 configuration for tests MUST be defined in `src/test/resources/application-test.yaml`, and integration test classes MUST activate it with `@ActiveProfiles("test")`.
 - H2 MUST run in PostgreSQL compatibility mode (e.g., `jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH`) so that the SQL migrations behave consistently with PostgreSQL.
 - The schema MUST be created by the Flyway migrations (Flyway is enabled for the `test` profile, as it runs locally); `spring.jpa.hibernate.ddl-auto` MUST be set to `validate` (or `none`), never `create` or `update`.
-- Integration test classes MUST use the `IT` suffix (e.g., `PaymentControllerIT`) and follow the same BDD naming rules described above.
+- Integration test classes MUST use the `IT` suffix (e.g., `PaymentControllerIT`) and follow the same BDD naming rules described above. They are executed by the `maven-failsafe-plugin` during `verify`.
 - Each test MUST be independent and leave no residual data, for example by using `@Transactional` rollback or cleaning the affected tables before each test.
 
 ## 3. DTOs as Java Records
@@ -121,15 +127,17 @@ Restrictions:
 
 ## 6. Centralized Error Handling
 
-- All exception handling MUST be centralized in a single class annotated with `@RestControllerAdvice`, named `GlobalExceptionHandler`, located in the `exception` package.
+- All exception handling MUST be centralized in a single class annotated with `@RestControllerAdvice`, named `GlobalExceptionHandler`, located in the `common.exception` package.
 - Controllers and services MUST NOT catch exceptions in order to build HTTP responses; they throw domain-specific exceptions instead.
-- Define custom, meaningful exceptions for domain errors (e.g., `PaymentNotFoundException`), extending `RuntimeException`.
+- Define custom, meaningful exceptions for domain errors, extending `RuntimeException`.
+- Missing resources MUST be reported with the generic `ResourceNotFoundException(resourceName, resourceId)` (e.g., `new ResourceNotFoundException("Payment", id)`), which produces the message `"<resourceName> with id '<resourceId>' was not found"`. Do NOT create one not-found exception per resource.
 - Each handled exception MUST be mapped to the appropriate HTTP status code, for example:
   - Resource not found → `404 Not Found`
   - Validation errors (`MethodArgumentNotValidException`) → `400 Bad Request`
   - Business rule violations → `409 Conflict` or `422 Unprocessable Entity`
   - Unexpected exceptions → `500 Internal Server Error`
 - Error responses MUST use a consistent structure: either Spring's `ProblemDetail` (RFC 9457) or a dedicated `ErrorResponse` record containing, at minimum, the timestamp, HTTP status, error message, and request path.
+- This project uses `ProblemDetail`: `GlobalExceptionHandler` extends `ResponseEntityExceptionHandler` (so standard Spring MVC errors share the same format), and every custom handler sets `title`, `detail`, and a `timestamp` property; Spring fills `instance` with the request path.
 - Unexpected exceptions MUST be logged; internal details (stack traces, SQL messages) MUST NOT be exposed to clients.
 
 ## 7. General Code Style

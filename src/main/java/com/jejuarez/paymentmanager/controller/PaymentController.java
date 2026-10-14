@@ -39,4 +39,9 @@ public class PaymentController {
     public PaymentResponse findById(@PathVariable String id) {
         return paymentService.findById(id);
     }
+
+    @PostMapping("/{id}/refund")
+    public PaymentResponse refund(@PathVariable String id) {
+        return paymentService.refund(id);
+    }
 }

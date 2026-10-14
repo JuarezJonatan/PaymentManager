@@ -6,6 +6,7 @@ import com.jejuarez.paymentmanager.dto.response.PageResponse;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
+import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.service.PaymentService;
 import org.junit.jupiter.api.DisplayName;
@@ -229,5 +230,45 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.errors.page").value("page must be greater than or equal to zero"))
                 .andExpect(jsonPath("$.errors.size").value("size must be between 1 and 100"));
         then(paymentService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("POST /payments/{id}/refund returns 200 with the refunded payment")
+    void givenApprovedPayment_whenRefundPayment_thenReturnsOkWithRefundedPayment() throws Exception {
+        PaymentResponse refundedPayment = new PaymentResponse(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
+                Currency.ARS, PaymentStatus.REFUNDED, Instant.parse("2026-10-08T15:00:00Z"));
+        given(paymentService.refund(PAYMENT_ID)).willReturn(refundedPayment);
+
+        mockMvc.perform(post("/payments/{id}/refund", PAYMENT_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(PAYMENT_ID))
+                .andExpect(jsonPath("$.status").value("REFUNDED"));
+    }
+
+    @Test
+    @DisplayName("POST /payments/{id}/refund returns 409 ProblemDetail when the payment cannot be refunded")
+    void givenNonRefundablePayment_whenRefundPayment_thenReturnsConflictProblemDetail() throws Exception {
+        given(paymentService.refund(PAYMENT_ID))
+                .willThrow(new PaymentNotRefundableException(PAYMENT_ID, PaymentStatus.REJECTED));
+
+        mockMvc.perform(post("/payments/{id}/refund", PAYMENT_ID))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.title").value("Payment cannot be refunded"))
+                .andExpect(jsonPath("$.detail")
+                        .value("Payment with id 'pay_001' cannot be refunded because its status is REJECTED"))
+                .andExpect(jsonPath("$.instance").value("/payments/pay_001/refund"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    @DisplayName("POST /payments/{id}/refund returns 404 ProblemDetail when the payment does not exist")
+    void givenNonExistentPaymentId_whenRefundPayment_thenReturnsNotFoundProblemDetail() throws Exception {
+        given(paymentService.refund(PAYMENT_ID)).willThrow(new ResourceNotFoundException("Payment", PAYMENT_ID));
+
+        mockMvc.perform(post("/payments/{id}/refund", PAYMENT_ID))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("Payment with id 'pay_001' was not found"));
     }
 }

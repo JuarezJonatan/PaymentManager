@@ -1,5 +1,6 @@
 package com.jejuarez.paymentmanager.service;
 
+import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
 import com.jejuarez.paymentmanager.dto.request.ListPaymentsRequest;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -44,5 +46,16 @@ public class PaymentService {
                 ? paymentRepository.findAll(pageable)
                 : paymentRepository.findByStatus(request.status(), pageable);
         return paymentMapper.toPageResponse(payments);
+    }
+
+    @Transactional
+    public PaymentResponse refund(String id) {
+        int refundedRows = paymentRepository.updateStatusIfCurrent(id, PaymentStatus.APPROVED, PaymentStatus.REFUNDED);
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", id));
+        if (refundedRows == 0) {
+            throw new PaymentNotRefundableException(id, payment.getStatus());
+        }
+        return paymentMapper.toResponse(payment);
     }
 }

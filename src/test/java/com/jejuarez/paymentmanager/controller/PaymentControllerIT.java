@@ -5,6 +5,7 @@ import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,6 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@DisplayName("PaymentController integration (H2 + Flyway)")
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -36,6 +38,7 @@ class PaymentControllerIT {
     }
 
     @Test
+    @DisplayName("GET /payments/{id} returns the payment stored in the database")
     void givenPersistedPayment_whenGetPaymentById_thenReturnsStoredPayment() throws Exception {
         paymentRepository.save(Payment.builder()
                 .id("pay_003")
@@ -57,6 +60,7 @@ class PaymentControllerIT {
     }
 
     @Test
+    @DisplayName("GET /payments/{id} returns 404 when the payment is not in the database")
     void givenNonExistentPaymentId_whenGetPaymentById_thenReturnsNotFound() throws Exception {
         mockMvc.perform(get("/payments/{id}", "pay_missing"))
                 .andExpect(status().isNotFound())

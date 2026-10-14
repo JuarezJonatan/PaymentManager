@@ -7,6 +7,7 @@ import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import com.jejuarez.paymentmanager.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.mapper.PaymentMapper;
 import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +25,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+@DisplayName("PaymentService")
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
@@ -40,6 +42,7 @@ class PaymentServiceTest {
     private PaymentService paymentService;
 
     @Test
+    @DisplayName("Returns the mapped payment when the id exists")
     void givenExistingPayment_whenFindById_thenReturnsPaymentResponse() {
         Payment payment = anApprovedPayment();
         PaymentResponse expectedResponse = new PaymentResponse(
@@ -53,6 +56,7 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("Throws ResourceNotFoundException and skips mapping when the id does not exist")
     void givenNonExistentPaymentId_whenFindById_thenThrowsResourceNotFoundException() {
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.empty());
 

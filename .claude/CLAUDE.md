@@ -65,6 +65,7 @@ All features MUST be developed following BDD principles, with tests expressing t
   - Example: `givenNonExistentPaymentId_whenFindById_thenThrowsResourceNotFoundException`
   - Example: `givenInvalidAmount_whenCreatePayment_thenReturnsBadRequest`
 - Comments such as `// given`, `// when`, `// then` (or `// arrange`, `// act`, `// assert`) are **forbidden**. The three phases MUST be separated only by a blank line, and the intent MUST be conveyed through descriptive method names and well-named variables.
+- Every test class and test method MUST have a JUnit `@DisplayName` with a short, human-readable English sentence describing the behavior (e.g., `@DisplayName("GET /payments/{id} returns 404 when the payment does not exist")`). The method name keeps the `given_when_then` format.
 - Use Mockito's BDD API (`BDDMockito.given(...)`, `then(...).should(...)`) instead of `when(...)` / `verify(...)`.
 - Use AssertJ (`assertThat`) for assertions.
 - Each test MUST verify a single behavior.

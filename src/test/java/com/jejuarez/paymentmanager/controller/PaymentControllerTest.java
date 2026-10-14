@@ -5,6 +5,7 @@ import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import com.jejuarez.paymentmanager.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.service.PaymentService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@DisplayName("PaymentController (web layer)")
 @WebMvcTest(PaymentController.class)
 class PaymentControllerTest {
 
@@ -33,6 +35,7 @@ class PaymentControllerTest {
     private PaymentService paymentService;
 
     @Test
+    @DisplayName("GET /payments/{id} returns 200 with the payment body when it exists")
     void givenExistingPayment_whenGetPaymentById_thenReturnsOkWithPayment() throws Exception {
         PaymentResponse payment = new PaymentResponse(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
                 Currency.ARS, PaymentStatus.APPROVED, Instant.parse("2026-10-08T15:00:00Z"));
@@ -49,6 +52,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @DisplayName("GET /payments/{id} returns 404 ProblemDetail when the payment does not exist")
     void givenNonExistentPaymentId_whenGetPaymentById_thenReturnsNotFoundProblemDetail() throws Exception {
         given(paymentService.findById(PAYMENT_ID)).willThrow(new ResourceNotFoundException("Payment", PAYMENT_ID));
 

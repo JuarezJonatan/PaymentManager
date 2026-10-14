@@ -6,6 +6,8 @@ import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import org.springframework.stereotype.Component;
 
+import java.math.RoundingMode;
+
 @Component
 public class PaymentMapper {
 
@@ -14,7 +16,7 @@ public class PaymentMapper {
     public Payment toEntity(CreatePaymentRequest request, PaymentStatus status) {
         return new Payment(
                 request.merchantId(),
-                request.amount().setScale(AMOUNT_SCALE),
+                request.amount().setScale(AMOUNT_SCALE, RoundingMode.UNNECESSARY),
                 request.currency(),
                 status
         );

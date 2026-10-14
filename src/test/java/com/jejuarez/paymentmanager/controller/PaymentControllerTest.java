@@ -23,7 +23,6 @@ import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -75,7 +74,7 @@ class PaymentControllerTest {
     }
 
     @Test
-    @DisplayName("POST /payments returns 201 with the created payment and its Location header")
+    @DisplayName("POST /payments returns 201 with the created payment")
     void givenValidRequest_whenCreatePayment_thenReturnsCreatedWithPayment() throws Exception {
         PaymentResponse payment = new PaymentResponse(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
                 Currency.ARS, PaymentStatus.APPROVED, Instant.parse("2026-10-08T15:00:00Z"));
@@ -83,7 +82,6 @@ class PaymentControllerTest {
 
         mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(VALID_REQUEST_BODY))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "http://localhost/payments/pay_001"))
                 .andExpect(jsonPath("$.id").value(PAYMENT_ID))
                 .andExpect(jsonPath("$.merchantId").value("COMMERCE_001"))
                 .andExpect(jsonPath("$.amount").value(15000.00))

@@ -1,6 +1,7 @@
 package com.jejuarez.paymentmanager.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -53,7 +54,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         Map<String, String> errors = exception.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(
                         FieldError::getField,
-                        fieldError -> Objects.requireNonNullElse(fieldError.getDefaultMessage(), INVALID),
+                        this::fieldErrorMessage,
                         (first, second) -> first,
                         LinkedHashMap::new));
         ProblemDetail body = problemDetail(HttpStatus.BAD_REQUEST, VALIDATION_TITLE, REQUEST_HAS_INVALID_FIELDS);
@@ -66,6 +67,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpMessageNotReadableException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         ProblemDetail body = problemDetail(HttpStatus.BAD_REQUEST, VALIDATION_TITLE, unreadableBodyDetail(exception));
         return handleExceptionInternal(exception, body, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
+    private String fieldErrorMessage(FieldError fieldError) {
+        if (fieldError.isBindingFailure() && fieldError.contains(TypeMismatchException.class)) {
+            Class<?> requiredType = fieldError.unwrap(TypeMismatchException.class).getRequiredType();
+            if (requiredType != null && requiredType.isEnum()) {
+                return "Invalid value '%s'. Accepted values: %s".formatted(
+                        fieldError.getRejectedValue(), Arrays.toString(requiredType.getEnumConstants()));
+            }
+            return "Invalid value '%s'".formatted(fieldError.getRejectedValue());
+        }
+        return Objects.requireNonNullElse(fieldError.getDefaultMessage(), INVALID);
     }
 
     private String unreadableBodyDetail(HttpMessageNotReadableException exception) {

@@ -1,12 +1,15 @@
 package com.jejuarez.paymentmanager.controller;
 
 import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
+import com.jejuarez.paymentmanager.dto.request.ListPaymentsRequest;
+import com.jejuarez.paymentmanager.dto.response.PageResponse;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,6 +28,11 @@ public class PaymentController {
     @ResponseStatus(HttpStatus.CREATED)
     public PaymentResponse create(@Valid @RequestBody CreatePaymentRequest request) {
         return paymentService.create(request);
+    }
+
+    @GetMapping
+    public PageResponse<PaymentResponse> list(@Valid @ModelAttribute ListPaymentsRequest request) {
+        return paymentService.list(request);
     }
 
     @GetMapping("/{id}")

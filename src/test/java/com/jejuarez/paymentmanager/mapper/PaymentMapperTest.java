@@ -2,13 +2,19 @@ package com.jejuarez.paymentmanager.mapper;
 
 import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
 import com.jejuarez.paymentmanager.dto.request.SimulationResult;
+import com.jejuarez.paymentmanager.dto.response.PageResponse;
+import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -42,5 +48,23 @@ class PaymentMapperTest {
         Payment payment = paymentMapper.toEntity(request, PaymentStatus.APPROVED);
 
         assertThat(payment.getAmount()).isEqualTo(new BigDecimal("15000.00"));
+    }
+
+    @Test
+    @DisplayName("Maps a page of payments into a page response keeping the pagination metadata")
+    void givenPageOfPayments_whenToPageResponse_thenReturnsMappedContentAndMetadata() {
+        Instant createdAt = Instant.parse("2026-10-08T15:00:00Z");
+        Payment payment = new Payment("pay_001", "COMMERCE_001", new BigDecimal("15000.00"),
+                Currency.ARS, PaymentStatus.APPROVED, createdAt);
+        PageImpl<Payment> payments = new PageImpl<>(List.of(payment), PageRequest.of(1, 1), 3);
+
+        PageResponse<PaymentResponse> response = paymentMapper.toPageResponse(payments);
+
+        assertThat(response.content()).containsExactly(new PaymentResponse(
+                "pay_001", "COMMERCE_001", new BigDecimal("15000.00"), Currency.ARS, PaymentStatus.APPROVED, createdAt));
+        assertThat(response.page()).isEqualTo(1);
+        assertThat(response.size()).isEqualTo(1);
+        assertThat(response.totalElements()).isEqualTo(3);
+        assertThat(response.totalPages()).isEqualTo(3);
     }
 }

@@ -48,11 +48,12 @@ com.jejuarez.paymentmanager
 ├── persistence
 │   ├── entity
 │   └── repository
-├── dto
-│   ├── request
-│   └── response
-├── mapper
-└── exception
+└── common
+    ├── dto
+    │   ├── request
+    │   └── response
+    ├── mapper
+    └── exception
 ```
 
 ## 2. Behavior-Driven Development (BDD)
@@ -117,14 +118,14 @@ Restrictions:
 
 ## 5. Mappers
 
-- Conversion between entities and DTOs MUST be performed exclusively by dedicated mapper classes located in the `mapper` package (e.g., `PaymentMapper`).
+- Conversion between entities and DTOs MUST be performed exclusively by dedicated mapper classes located in the `common.mapper` package (e.g., `PaymentMapper`).
 - Mappers MUST be Spring components (`@Component`) injected into services.
 - Mapping logic MUST NOT be placed in controllers, services, entities, or DTOs.
 - Typical method names: `toEntity(<Request>)`, `toResponse(<Entity>)`, `toResponseList(List<Entity>)`.
 
 ## 6. Centralized Error Handling
 
-- All exception handling MUST be centralized in a single class annotated with `@RestControllerAdvice`, named `GlobalExceptionHandler`, located in the `exception` package.
+- All exception handling MUST be centralized in a single class annotated with `@RestControllerAdvice`, named `GlobalExceptionHandler`, located in the `common.exception` package.
 - Controllers and services MUST NOT catch exceptions in order to build HTTP responses; they throw domain-specific exceptions instead.
 - Define custom, meaningful exceptions for domain errors, extending `RuntimeException`.
 - Missing resources MUST be reported with the generic `ResourceNotFoundException(resourceName, resourceId)` (e.g., `new ResourceNotFoundException("Payment", id)`), which produces the message `"<resourceName> with id '<resourceId>' was not found"`. Do NOT create one not-found exception per resource.

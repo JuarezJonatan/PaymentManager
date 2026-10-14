@@ -1,4 +1,4 @@
-package com.jejuarez.paymentmanager.exception;
+package com.jejuarez.paymentmanager.common.exception;
 
 public class ResourceNotFoundException extends RuntimeException {
 

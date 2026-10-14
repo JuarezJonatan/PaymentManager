@@ -1,6 +1,6 @@
 package com.jejuarez.paymentmanager.controller;
 
-import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
+import com.jejuarez.paymentmanager.common.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

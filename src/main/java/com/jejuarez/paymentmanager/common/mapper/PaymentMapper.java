@@ -1,6 +1,6 @@
-package com.jejuarez.paymentmanager.mapper;
+package com.jejuarez.paymentmanager.common.mapper;
 
-import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
+import com.jejuarez.paymentmanager.common.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import org.springframework.stereotype.Component;
 

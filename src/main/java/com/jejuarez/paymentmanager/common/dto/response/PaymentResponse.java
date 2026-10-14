@@ -1,4 +1,4 @@
-package com.jejuarez.paymentmanager.dto.response;
+package com.jejuarez.paymentmanager.common.dto.response;
 
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;

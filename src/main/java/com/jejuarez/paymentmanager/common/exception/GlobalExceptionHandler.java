@@ -1,4 +1,4 @@
-package com.jejuarez.paymentmanager.exception;
+package com.jejuarez.paymentmanager.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

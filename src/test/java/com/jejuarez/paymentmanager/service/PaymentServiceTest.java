@@ -1,11 +1,11 @@
 package com.jejuarez.paymentmanager.service;
 
-import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
+import com.jejuarez.paymentmanager.common.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
-import com.jejuarez.paymentmanager.exception.ResourceNotFoundException;
-import com.jejuarez.paymentmanager.mapper.PaymentMapper;
+import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
+import com.jejuarez.paymentmanager.common.mapper.PaymentMapper;
 import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

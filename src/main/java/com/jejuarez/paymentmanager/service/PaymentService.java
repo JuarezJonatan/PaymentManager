@@ -1,8 +1,8 @@
 package com.jejuarez.paymentmanager.service;
 
-import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
-import com.jejuarez.paymentmanager.exception.ResourceNotFoundException;
-import com.jejuarez.paymentmanager.mapper.PaymentMapper;
+import com.jejuarez.paymentmanager.common.dto.response.PaymentResponse;
+import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
+import com.jejuarez.paymentmanager.common.mapper.PaymentMapper;
 import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

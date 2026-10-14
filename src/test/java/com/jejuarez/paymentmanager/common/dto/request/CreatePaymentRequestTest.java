@@ -1,4 +1,4 @@
-package com.jejuarez.paymentmanager.dto.request;
+package com.jejuarez.paymentmanager.common.dto.request;
 
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import jakarta.validation.ConstraintViolation;

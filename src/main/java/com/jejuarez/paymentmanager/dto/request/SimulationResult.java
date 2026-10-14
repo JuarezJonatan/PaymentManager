@@ -1,4 +1,4 @@
-package com.jejuarez.paymentmanager.common.dto.request;
+package com.jejuarez.paymentmanager.dto.request;
 
 public enum SimulationResult {
     APPROVED,

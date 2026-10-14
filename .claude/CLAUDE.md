@@ -48,13 +48,15 @@ com.jejuarez.paymentmanager
 ├── persistence
 │   ├── entity
 │   └── repository
+├── dto
+│   ├── request
+│   └── response
+├── mapper
 └── common
-    ├── dto
-    │   ├── request
-    │   └── response
-    ├── mapper
     └── exception
 ```
+
+`common` holds only cross-cutting code shared by any resource (e.g., exceptions and the global exception handler). Resource-specific classes (DTOs, mappers) MUST NOT be placed in `common`.
 
 ## 2. Behavior-Driven Development (BDD)
 
@@ -118,7 +120,7 @@ Restrictions:
 
 ## 5. Mappers
 
-- Conversion between entities and DTOs MUST be performed exclusively by dedicated mapper classes located in the `common.mapper` package (e.g., `PaymentMapper`).
+- Conversion between entities and DTOs MUST be performed exclusively by dedicated mapper classes located in the `mapper` package (e.g., `PaymentMapper`).
 - Mappers MUST be Spring components (`@Component`) injected into services.
 - Mapping logic MUST NOT be placed in controllers, services, entities, or DTOs.
 - Typical method names: `toEntity(<Request>)`, `toResponse(<Entity>)`, `toResponseList(List<Entity>)`.

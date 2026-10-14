@@ -15,7 +15,6 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
 
-    @Transactional(readOnly = true)
     public PaymentResponse findById(String id) {
         return paymentRepository.findById(id)
                 .map(paymentMapper::toResponse)

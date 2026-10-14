@@ -45,8 +45,9 @@ Organize the code by layer under the base package:
 com.jejuarez.paymentmanager
 ├── controller
 ├── service
-├── repository
-├── entity
+├── persistence
+│   ├── entity
+│   └── repository
 ├── dto
 │   ├── request
 │   └── response

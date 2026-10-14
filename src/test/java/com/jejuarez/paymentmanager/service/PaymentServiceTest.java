@@ -1,12 +1,12 @@
 package com.jejuarez.paymentmanager.service;
 
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
-import com.jejuarez.paymentmanager.entity.Currency;
-import com.jejuarez.paymentmanager.entity.Payment;
-import com.jejuarez.paymentmanager.entity.PaymentStatus;
+import com.jejuarez.paymentmanager.persistence.entity.Currency;
+import com.jejuarez.paymentmanager.persistence.entity.Payment;
+import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import com.jejuarez.paymentmanager.exception.PaymentNotFoundException;
 import com.jejuarez.paymentmanager.mapper.PaymentMapper;
-import com.jejuarez.paymentmanager.repository.PaymentRepository;
+import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

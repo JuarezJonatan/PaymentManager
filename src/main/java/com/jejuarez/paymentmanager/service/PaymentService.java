@@ -3,7 +3,7 @@ package com.jejuarez.paymentmanager.service;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.exception.PaymentNotFoundException;
 import com.jejuarez.paymentmanager.mapper.PaymentMapper;
-import com.jejuarez.paymentmanager.repository.PaymentRepository;
+import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,7 +1,7 @@
 package com.jejuarez.paymentmanager.dto.response;
 
-import com.jejuarez.paymentmanager.entity.Currency;
-import com.jejuarez.paymentmanager.entity.PaymentStatus;
+import com.jejuarez.paymentmanager.persistence.entity.Currency;
+import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;

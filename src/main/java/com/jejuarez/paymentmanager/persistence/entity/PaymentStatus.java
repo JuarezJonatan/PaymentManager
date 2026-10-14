@@ -1,4 +1,4 @@
-package com.jejuarez.paymentmanager.entity;
+package com.jejuarez.paymentmanager.persistence.entity;
 
 public enum PaymentStatus {
     APPROVED,

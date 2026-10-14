@@ -1,7 +1,7 @@
 package com.jejuarez.paymentmanager.mapper;
 
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
-import com.jejuarez.paymentmanager.entity.Payment;
+import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import org.springframework.stereotype.Component;
 
 @Component

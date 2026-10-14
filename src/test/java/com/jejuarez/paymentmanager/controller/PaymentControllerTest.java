@@ -1,0 +1,64 @@
+package com.jejuarez.paymentmanager.controller;
+
+import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
+import com.jejuarez.paymentmanager.entity.Currency;
+import com.jejuarez.paymentmanager.entity.PaymentStatus;
+import com.jejuarez.paymentmanager.exception.PaymentNotFoundException;
+import com.jejuarez.paymentmanager.service.PaymentService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(PaymentController.class)
+class PaymentControllerTest {
+
+    private static final String PAYMENT_ID = "pay_001";
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private PaymentService paymentService;
+
+    @Test
+    void givenExistingPayment_whenGetPaymentById_thenReturnsOkWithPayment() throws Exception {
+        PaymentResponse payment = new PaymentResponse(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
+                Currency.ARS, PaymentStatus.APPROVED, Instant.parse("2026-10-08T15:00:00Z"));
+        given(paymentService.findById(PAYMENT_ID)).willReturn(payment);
+
+        mockMvc.perform(get("/payments/{id}", PAYMENT_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(PAYMENT_ID))
+                .andExpect(jsonPath("$.merchantId").value("COMMERCE_001"))
+                .andExpect(jsonPath("$.amount").value(15000.00))
+                .andExpect(jsonPath("$.currency").value("ARS"))
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.createdAt").value("2026-10-08T15:00:00Z"));
+    }
+
+    @Test
+    void givenNonExistentPaymentId_whenGetPaymentById_thenReturnsNotFoundProblemDetail() throws Exception {
+        given(paymentService.findById(PAYMENT_ID)).willThrow(new PaymentNotFoundException(PAYMENT_ID));
+
+        mockMvc.perform(get("/payments/{id}", PAYMENT_ID))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Payment not found"))
+                .andExpect(jsonPath("$.detail").value("Payment with id 'pay_001' was not found"))
+                .andExpect(jsonPath("$.instance").value("/payments/pay_001"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+}

@@ -32,6 +32,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final String VALIDATION_TITLE = "Validation failed";
     public static final String INTERNAL_SERVER_ERROR = "Internal server error";
     public static final String RESOURCE_NOT_FOUND = "Resource not found";
+    public static final String PAYMENT_NOT_REFUNDABLE = "Payment cannot be refunded";
     public static final String AN_UNEXPECTED_ERROR_OCCURRED = "An unexpected error occurred";
     public static final String UNEXPECTED_ERROR = "Unexpected error";
     public static final String INVALID = "is invalid";
@@ -40,6 +41,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ProblemDetail handleResourceNotFound(ResourceNotFoundException exception) {
         return problemDetail(HttpStatus.NOT_FOUND, RESOURCE_NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(PaymentNotRefundableException.class)
+    public ProblemDetail handlePaymentNotRefundable(PaymentNotRefundableException exception) {
+        return problemDetail(HttpStatus.CONFLICT, PAYMENT_NOT_REFUNDABLE, exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

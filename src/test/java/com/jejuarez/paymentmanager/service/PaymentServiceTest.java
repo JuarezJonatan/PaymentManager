@@ -8,6 +8,7 @@ import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
+import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.mapper.PaymentMapper;
 import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
@@ -129,8 +130,64 @@ class PaymentServiceTest {
         then(paymentRepository).should(never()).findAll(any(Pageable.class));
     }
 
+    @Test
+    @DisplayName("Refunds an approved payment with a conditional update and returns it as REFUNDED")
+    void givenApprovedPayment_whenRefund_thenReturnsRefundedPayment() {
+        Payment refundedPayment = aPaymentWithStatus(PaymentStatus.REFUNDED);
+        PaymentResponse expectedResponse = new PaymentResponse(
+                PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"), Currency.ARS, PaymentStatus.REFUNDED, CREATED_AT);
+        given(paymentRepository.updateStatusIfCurrent(PAYMENT_ID, PaymentStatus.APPROVED, PaymentStatus.REFUNDED))
+                .willReturn(1);
+        given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(refundedPayment));
+        given(paymentMapper.toResponse(refundedPayment)).willReturn(expectedResponse);
+
+        PaymentResponse response = paymentService.refund(PAYMENT_ID);
+
+        assertThat(response).isEqualTo(expectedResponse);
+    }
+
+    @Test
+    @DisplayName("Throws PaymentNotRefundableException when the payment was already refunded")
+    void givenRefundedPayment_whenRefund_thenThrowsPaymentNotRefundableException() {
+        given(paymentRepository.updateStatusIfCurrent(PAYMENT_ID, PaymentStatus.APPROVED, PaymentStatus.REFUNDED))
+                .willReturn(0);
+        given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(aPaymentWithStatus(PaymentStatus.REFUNDED)));
+
+        assertThatThrownBy(() -> paymentService.refund(PAYMENT_ID))
+                .isInstanceOf(PaymentNotRefundableException.class)
+                .hasMessage("Payment with id 'pay_001' cannot be refunded because its status is REFUNDED");
+    }
+
+    @Test
+    @DisplayName("Throws PaymentNotRefundableException when the payment was rejected")
+    void givenRejectedPayment_whenRefund_thenThrowsPaymentNotRefundableException() {
+        given(paymentRepository.updateStatusIfCurrent(PAYMENT_ID, PaymentStatus.APPROVED, PaymentStatus.REFUNDED))
+                .willReturn(0);
+        given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(aPaymentWithStatus(PaymentStatus.REJECTED)));
+
+        assertThatThrownBy(() -> paymentService.refund(PAYMENT_ID))
+                .isInstanceOf(PaymentNotRefundableException.class)
+                .hasMessage("Payment with id 'pay_001' cannot be refunded because its status is REJECTED");
+    }
+
+    @Test
+    @DisplayName("Throws ResourceNotFoundException when refunding a payment that does not exist")
+    void givenNonExistentPaymentId_whenRefund_thenThrowsResourceNotFoundException() {
+        given(paymentRepository.updateStatusIfCurrent(PAYMENT_ID, PaymentStatus.APPROVED, PaymentStatus.REFUNDED))
+                .willReturn(0);
+        given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.refund(PAYMENT_ID))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Payment with id 'pay_001' was not found");
+    }
+
     private Payment anApprovedPayment() {
+        return aPaymentWithStatus(PaymentStatus.APPROVED);
+    }
+
+    private Payment aPaymentWithStatus(PaymentStatus status) {
         return new Payment(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
-                Currency.ARS, PaymentStatus.APPROVED, CREATED_AT);
+                Currency.ARS, status, CREATED_AT);
     }
 }

@@ -1,7 +1,9 @@
 package com.jejuarez.paymentmanager.service;
 
 import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
+import com.jejuarez.paymentmanager.dto.request.ListPaymentsRequest;
 import com.jejuarez.paymentmanager.dto.request.SimulationResult;
+import com.jejuarez.paymentmanager.dto.response.PageResponse;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
@@ -15,9 +17,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +41,7 @@ class PaymentServiceTest {
 
     private static final String PAYMENT_ID = "pay_001";
     private static final Instant CREATED_AT = Instant.parse("2026-10-08T15:00:00Z");
+    private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 
     @Mock
     private PaymentRepository paymentRepository;
@@ -88,6 +97,36 @@ class PaymentServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Payment with id 'pay_001' was not found");
         then(paymentMapper).should(never()).toResponse(any());
+    }
+
+    @Test
+    @DisplayName("Lists all payments newest first using the requested page when no status is given")
+    void givenNoStatus_whenList_thenQueriesAllPaymentsNewestFirst() {
+        Pageable expectedPageable = PageRequest.of(2, 10, NEWEST_FIRST);
+        Page<Payment> payments = new PageImpl<>(List.of(anApprovedPayment()), expectedPageable, 21);
+        PageResponse<PaymentResponse> expectedResponse = new PageResponse<>(List.of(), 2, 10, 21, 3);
+        given(paymentRepository.findAll(expectedPageable)).willReturn(payments);
+        given(paymentMapper.toPageResponse(payments)).willReturn(expectedResponse);
+
+        PageResponse<PaymentResponse> response = paymentService.list(new ListPaymentsRequest(null, 2, 10));
+
+        assertThat(response).isEqualTo(expectedResponse);
+        then(paymentRepository).should(never()).findByStatus(any(), any());
+    }
+
+    @Test
+    @DisplayName("Lists only the payments with the given status newest first")
+    void givenStatus_whenList_thenQueriesPaymentsByStatusNewestFirst() {
+        Pageable expectedPageable = PageRequest.of(0, 20, NEWEST_FIRST);
+        Page<Payment> payments = new PageImpl<>(List.of(anApprovedPayment()), expectedPageable, 1);
+        PageResponse<PaymentResponse> expectedResponse = new PageResponse<>(List.of(), 0, 20, 1, 1);
+        given(paymentRepository.findByStatus(PaymentStatus.APPROVED, expectedPageable)).willReturn(payments);
+        given(paymentMapper.toPageResponse(payments)).willReturn(expectedResponse);
+
+        PageResponse<PaymentResponse> response = paymentService.list(new ListPaymentsRequest(PaymentStatus.APPROVED, 0, 20));
+
+        assertThat(response).isEqualTo(expectedResponse);
+        then(paymentRepository).should(never()).findAll(any(Pageable.class));
     }
 
     private Payment anApprovedPayment() {

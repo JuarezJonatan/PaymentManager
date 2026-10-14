@@ -1,6 +1,8 @@
 package com.jejuarez.paymentmanager.controller;
 
 import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
+import com.jejuarez.paymentmanager.dto.request.ListPaymentsRequest;
+import com.jejuarez.paymentmanager.dto.response.PageResponse;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
@@ -16,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -157,6 +160,74 @@ class PaymentControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation failed"))
                 .andExpect(jsonPath("$.detail").value("Malformed JSON request body"));
+        then(paymentService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("GET /payments returns 200 with the requested page of payments")
+    void givenStatusAndPagination_whenListPayments_thenReturnsOkWithPage() throws Exception {
+        PaymentResponse payment = new PaymentResponse(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
+                Currency.ARS, PaymentStatus.APPROVED, Instant.parse("2026-10-08T15:00:00Z"));
+        given(paymentService.list(new ListPaymentsRequest(PaymentStatus.APPROVED, 1, 5)))
+                .willReturn(new PageResponse<>(List.of(payment), 1, 5, 6, 2));
+
+        mockMvc.perform(get("/payments").param("status", "APPROVED").param("page", "1").param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(PAYMENT_ID))
+                .andExpect(jsonPath("$.content[0].status").value("APPROVED"))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(5))
+                .andExpect(jsonPath("$.totalElements").value(6))
+                .andExpect(jsonPath("$.totalPages").value(2));
+    }
+
+    @Test
+    @DisplayName("GET /payments uses no status filter, page 0 and size 20 when no parameters are given")
+    void givenNoParameters_whenListPayments_thenUsesDefaultPagination() throws Exception {
+        given(paymentService.list(new ListPaymentsRequest(null, 0, 20)))
+                .willReturn(new PageResponse<>(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/payments"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty());
+        then(paymentService).should().list(new ListPaymentsRequest(null, 0, 20));
+    }
+
+    @Test
+    @DisplayName("GET /payments returns 400 listing the accepted values when the status is invalid")
+    void givenInvalidStatus_whenListPayments_thenReturnsBadRequestWithAcceptedValues() throws Exception {
+        mockMvc.perform(get("/payments").param("status", "PENDING"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.detail").value("Request has invalid fields"))
+                .andExpect(jsonPath("$.errors.status").value(
+                        "Invalid value 'PENDING'. Accepted values: [APPROVED, REJECTED, REFUNDED]"))
+                .andExpect(jsonPath("$.instance").value("/payments"))
+                .andExpect(jsonPath("$.timestamp").exists());
+        then(paymentService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("GET /payments returns 400 naming the parameter when the page is not a number")
+    void givenNonNumericPage_whenListPayments_thenReturnsBadRequestNamingTheParameter() throws Exception {
+        mockMvc.perform(get("/payments").param("page", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.page").value("Invalid value 'abc'"));
+        then(paymentService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("GET /payments returns 400 with parameter errors when page and size are out of range")
+    void givenOutOfRangePagination_whenListPayments_thenReturnsBadRequestWithParameterErrors() throws Exception {
+        mockMvc.perform(get("/payments").param("page", "-1").param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.detail").value("Request has invalid fields"))
+                .andExpect(jsonPath("$.errors.page").value("page must be greater than or equal to zero"))
+                .andExpect(jsonPath("$.errors.size").value("size must be between 1 and 100"));
         then(paymentService).shouldHaveNoInteractions();
     }
 }

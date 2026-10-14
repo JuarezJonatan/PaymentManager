@@ -1,9 +1,11 @@
 package com.jejuarez.paymentmanager.mapper;
 
 import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
+import com.jejuarez.paymentmanager.dto.response.PageResponse;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.math.RoundingMode;
@@ -30,6 +32,16 @@ public class PaymentMapper {
                 payment.getCurrency(),
                 payment.getStatus(),
                 payment.getCreatedAt()
+        );
+    }
+
+    public PageResponse<PaymentResponse> toPageResponse(Page<Payment> payments) {
+        return new PageResponse<>(
+                payments.getContent().stream().map(this::toResponse).toList(),
+                payments.getNumber(),
+                payments.getSize(),
+                payments.getTotalElements(),
+                payments.getTotalPages()
         );
     }
 }

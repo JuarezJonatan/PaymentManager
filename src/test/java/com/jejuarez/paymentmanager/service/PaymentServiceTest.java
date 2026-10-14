@@ -4,7 +4,7 @@ import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
-import com.jejuarez.paymentmanager.exception.PaymentNotFoundException;
+import com.jejuarez.paymentmanager.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.mapper.PaymentMapper;
 import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
@@ -53,11 +53,11 @@ class PaymentServiceTest {
     }
 
     @Test
-    void givenNonExistentPaymentId_whenFindById_thenThrowsPaymentNotFoundException() {
+    void givenNonExistentPaymentId_whenFindById_thenThrowsResourceNotFoundException() {
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> paymentService.findById(PAYMENT_ID))
-                .isInstanceOf(PaymentNotFoundException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Payment with id 'pay_001' was not found");
         then(paymentMapper).should(never()).toResponse(any());
     }

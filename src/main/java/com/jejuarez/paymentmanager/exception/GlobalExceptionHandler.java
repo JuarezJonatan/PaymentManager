@@ -13,9 +13,9 @@ import java.time.Instant;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(PaymentNotFoundException.class)
-    public ProblemDetail handlePaymentNotFound(PaymentNotFoundException exception) {
-        return problemDetail(HttpStatus.NOT_FOUND, "Payment not found", exception.getMessage());
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ProblemDetail handleResourceNotFound(ResourceNotFoundException exception) {
+        return problemDetail(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

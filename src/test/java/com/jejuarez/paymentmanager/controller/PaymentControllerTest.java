@@ -3,7 +3,7 @@ package com.jejuarez.paymentmanager.controller;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
-import com.jejuarez.paymentmanager.exception.PaymentNotFoundException;
+import com.jejuarez.paymentmanager.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.service.PaymentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,13 +50,13 @@ class PaymentControllerTest {
 
     @Test
     void givenNonExistentPaymentId_whenGetPaymentById_thenReturnsNotFoundProblemDetail() throws Exception {
-        given(paymentService.findById(PAYMENT_ID)).willThrow(new PaymentNotFoundException(PAYMENT_ID));
+        given(paymentService.findById(PAYMENT_ID)).willThrow(new ResourceNotFoundException("Payment", PAYMENT_ID));
 
         mockMvc.perform(get("/payments/{id}", PAYMENT_ID))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.title").value("Payment not found"))
+                .andExpect(jsonPath("$.title").value("Resource not found"))
                 .andExpect(jsonPath("$.detail").value("Payment with id 'pay_001' was not found"))
                 .andExpect(jsonPath("$.instance").value("/payments/pay_001"))
                 .andExpect(jsonPath("$.timestamp").exists());

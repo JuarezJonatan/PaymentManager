@@ -62,7 +62,7 @@ All features MUST be developed following BDD principles, with tests expressing t
 - Test method names MUST fully describe the scenario using the **given / when / then** structure, so that no explanatory comments are required.
 - Naming format: `given<Precondition>_when<Action>_then<ExpectedOutcome>`
   - Example: `givenExistingPayment_whenFindById_thenReturnsPayment`
-  - Example: `givenNonExistentPaymentId_whenFindById_thenThrowsPaymentNotFoundException`
+  - Example: `givenNonExistentPaymentId_whenFindById_thenThrowsResourceNotFoundException`
   - Example: `givenInvalidAmount_whenCreatePayment_thenReturnsBadRequest`
 - Comments such as `// given`, `// when`, `// then` (or `// arrange`, `// act`, `// assert`) are **forbidden**. The three phases MUST be separated only by a blank line, and the intent MUST be conveyed through descriptive method names and well-named variables.
 - Use Mockito's BDD API (`BDDMockito.given(...)`, `then(...).should(...)`) instead of `when(...)` / `verify(...)`.
@@ -124,7 +124,7 @@ Restrictions:
 
 - All exception handling MUST be centralized in a single class annotated with `@RestControllerAdvice`, named `GlobalExceptionHandler`, located in the `exception` package.
 - Controllers and services MUST NOT catch exceptions in order to build HTTP responses; they throw domain-specific exceptions instead.
-- Define custom, meaningful exceptions for domain errors (e.g., `PaymentNotFoundException`), extending `RuntimeException`.
+- Define custom, meaningful exceptions for domain errors (e.g., `ResourceNotFoundException`), extending `RuntimeException`.
 - Each handled exception MUST be mapped to the appropriate HTTP status code, for example:
   - Resource not found → `404 Not Found`
   - Validation errors (`MethodArgumentNotValidException`) → `400 Bad Request`

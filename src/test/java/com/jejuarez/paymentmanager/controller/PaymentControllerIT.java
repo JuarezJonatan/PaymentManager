@@ -10,13 +10,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -59,5 +63,59 @@ class PaymentControllerIT {
         mockMvc.perform(get("/payments/{id}", "pay_missing"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").value("Payment with id 'pay_missing' was not found"));
+    }
+
+    @Test
+    @DisplayName("POST /payments stores an approved payment with a generated id and creation date")
+    void givenApprovedSimulation_whenCreatePayment_thenStoresApprovedPayment() throws Exception {
+        String body = """
+                {"merchantId": "COMMERCE_001", "amount": 15000, "currency": "ARS", "simulationResult": "APPROVED"}
+                """;
+
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(startsWith("pay_")))
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.createdAt").exists());
+
+        assertThat(paymentRepository.findAll())
+                .singleElement()
+                .satisfies(payment -> {
+                    assertThat(payment.getMerchantId()).isEqualTo("COMMERCE_001");
+                    assertThat(payment.getAmount()).isEqualByComparingTo("15000");
+                    assertThat(payment.getStatus()).isEqualTo(PaymentStatus.APPROVED);
+                    assertThat(payment.getCreatedAt()).isNotNull();
+                });
+    }
+
+    @Test
+    @DisplayName("POST /payments stores a rejected payment when the simulation result is REJECTED")
+    void givenRejectedSimulation_whenCreatePayment_thenStoresRejectedPayment() throws Exception {
+        String body = """
+                {"merchantId": "COMMERCE_001", "amount": 15000, "currency": "ARS", "simulationResult": "REJECTED"}
+                """;
+
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("REJECTED"));
+
+        assertThat(paymentRepository.findAll())
+                .singleElement()
+                .extracting(Payment::getStatus)
+                .isEqualTo(PaymentStatus.REJECTED);
+    }
+
+    @Test
+    @DisplayName("POST /payments returns 400 and stores nothing when the amount is not positive")
+    void givenNonPositiveAmount_whenCreatePayment_thenReturnsBadRequestAndStoresNothing() throws Exception {
+        String body = """
+                {"merchantId": "COMMERCE_001", "amount": -10, "currency": "ARS", "simulationResult": "APPROVED"}
+                """;
+
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.amount").value("amount must be greater than zero"));
+
+        assertThat(paymentRepository.count()).isZero();
     }
 }

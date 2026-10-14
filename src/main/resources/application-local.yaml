@@ -5,3 +5,4 @@ spring:
     password: ${POSTGRES_PASSWORD:payment_manager}
   flyway:
     enabled: true
+    locations: classpath:db/migration,classpath:db/seed

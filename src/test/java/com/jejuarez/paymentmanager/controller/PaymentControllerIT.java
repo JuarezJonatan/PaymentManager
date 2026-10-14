@@ -40,14 +40,8 @@ class PaymentControllerIT {
     @Test
     @DisplayName("GET /payments/{id} returns the payment stored in the database")
     void givenPersistedPayment_whenGetPaymentById_thenReturnsStoredPayment() throws Exception {
-        paymentRepository.save(Payment.builder()
-                .id("pay_003")
-                .merchantId("COMMERCE_002")
-                .amount(new BigDecimal("8200.00"))
-                .currency(Currency.ARS)
-                .status(PaymentStatus.REFUNDED)
-                .createdAt(Instant.parse("2026-10-08T15:10:00Z"))
-                .build());
+        paymentRepository.save(new Payment("pay_003", "COMMERCE_002", new BigDecimal("8200.00"),
+                Currency.ARS, PaymentStatus.REFUNDED, Instant.parse("2026-10-08T15:10:00Z")));
 
         mockMvc.perform(get("/payments/{id}", "pay_003"))
                 .andExpect(status().isOk())

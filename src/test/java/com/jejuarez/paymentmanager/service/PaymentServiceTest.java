@@ -67,13 +67,7 @@ class PaymentServiceTest {
     }
 
     private Payment anApprovedPayment() {
-        return Payment.builder()
-                .id(PAYMENT_ID)
-                .merchantId("COMMERCE_001")
-                .amount(new BigDecimal("15000.00"))
-                .currency(Currency.ARS)
-                .status(PaymentStatus.APPROVED)
-                .createdAt(CREATED_AT)
-                .build();
+        return new Payment(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
+                Currency.ARS, PaymentStatus.APPROVED, CREATED_AT);
     }
 }

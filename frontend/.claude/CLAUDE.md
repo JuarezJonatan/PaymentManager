@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file defines the mandatory conventions for `payment-manager-frontend`. All generated or modified code under `frontend/` MUST comply with these rules. The backend conventions in `.claude/CLAUDE.md` do NOT apply here, except where this file explicitly mirrors them.
+This file defines the mandatory conventions for `payment-manager-frontend`. All generated or modified code under `frontend/` MUST comply with these rules. The backend conventions in `backend/.claude/CLAUDE.md` do NOT apply here, except where this file explicitly mirrors them.
 
 ## Project Context
 

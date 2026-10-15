@@ -1,5 +1,7 @@
 package com.jejuarez.paymentmanager.service;
 
+import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyConflictException;
+import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyMismatchException;
 import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
@@ -11,6 +13,7 @@ import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,11 +30,36 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
     private final PaymentAuthorizationSimulator authorizationSimulator;
+    private final PaymentRequestHasher requestHasher;
 
-    public PaymentResponse create(CreatePaymentRequest request) {
+    @Transactional
+    public PaymentResponse create(CreatePaymentRequest request, String idempotencyKey) {
+        if (idempotencyKey == null) {
+            PaymentStatus status = authorizationSimulator.authorize(request.simulationResult());
+            return paymentMapper.toResponse(paymentRepository.save(paymentMapper.toEntity(request, status)));
+        }
+        String requestHash = requestHasher.hash(request);
+        return paymentRepository.findByIdempotencyKey(idempotencyKey)
+                .map(existingPayment -> replay(existingPayment, idempotencyKey, requestHash))
+                .orElseGet(() -> createWithIdempotencyKey(request, idempotencyKey, requestHash));
+    }
+
+    private PaymentResponse replay(Payment existingPayment, String idempotencyKey, String requestHash) {
+        if (!existingPayment.getRequestHash().equals(requestHash)) {
+            throw new IdempotencyKeyMismatchException(idempotencyKey);
+        }
+        return paymentMapper.toResponse(existingPayment);
+    }
+
+    private PaymentResponse createWithIdempotencyKey(CreatePaymentRequest request, String idempotencyKey,
+                                                     String requestHash) {
         PaymentStatus status = authorizationSimulator.authorize(request.simulationResult());
-        Payment payment = paymentRepository.save(paymentMapper.toEntity(request, status));
-        return paymentMapper.toResponse(payment);
+        Payment newPayment = paymentMapper.toEntity(request, status, idempotencyKey, requestHash);
+        try {
+            return paymentMapper.toResponse(paymentRepository.saveAndFlush(newPayment));
+        } catch (DataIntegrityViolationException exception) {
+            throw new IdempotencyKeyConflictException(idempotencyKey);
+        }
     }
 
     public PaymentResponse findById(String id) {

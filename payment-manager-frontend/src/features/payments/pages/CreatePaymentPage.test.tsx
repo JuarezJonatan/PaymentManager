@@ -1,7 +1,9 @@
 import { delay, http, HttpResponse } from 'msw';
 import { aPayment } from '../../../../tests/mocks/payments';
 import { server } from '../../../../tests/mocks/server';
-import { renderApp, screen, within } from '../../../../tests/render';
+import { renderApp, screen, waitFor, within } from '../../../../tests/render';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 function captureCreateRequests(): unknown[] {
   const bodies: unknown[] = [];
@@ -11,6 +13,24 @@ function captureCreateRequests(): unknown[] {
     }
   });
   return bodies;
+}
+
+function captureIdempotencyKeys(): (string | null)[] {
+  const keys: (string | null)[] = [];
+  server.events.on('request:start', ({ request }) => {
+    if (request.method === 'POST' && new URL(request.url).pathname === '/api/payments') {
+      keys.push(request.headers.get('Idempotency-Key'));
+    }
+  });
+  return keys;
+}
+
+function failCreateRequests() {
+  server.use(
+    http.post('/api/payments', () =>
+      HttpResponse.json({ detail: 'Database unavailable' }, { status: 500 }),
+    ),
+  );
 }
 
 async function fillValidForm(user: ReturnType<typeof renderApp>['user']) {
@@ -143,6 +163,49 @@ describe('CreatePaymentPage', () => {
     expect(within(alert).getByText('Database unavailable')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Amount' })).toHaveValue('1,500.5');
     expect(router.state.location.pathname).toBe('/payments/new');
+  });
+
+  it('given valid values, when the form is submitted, then sends a UUID as Idempotency-Key', async () => {
+    const keys = captureIdempotencyKeys();
+    const { user } = renderApp('/payments/new');
+    await fillValidForm(user);
+
+    await user.click(screen.getByRole('button', { name: 'Create payment' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Payment details' }),
+    ).toBeInTheDocument();
+    expect(keys).toEqual([expect.stringMatching(UUID_PATTERN)]);
+  });
+
+  it('given a failed submission, when the same values are submitted again, then reuses the Idempotency-Key', async () => {
+    const keys = captureIdempotencyKeys();
+    failCreateRequests();
+    const { user } = renderApp('/payments/new');
+    await fillValidForm(user);
+    await user.click(screen.getByRole('button', { name: 'Create payment' }));
+    await screen.findByRole('alert');
+
+    await user.click(screen.getByRole('button', { name: 'Create payment' }));
+
+    await waitFor(() => expect(keys).toHaveLength(2));
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  it('given a failed submission, when the values change and the form is submitted again, then sends a new Idempotency-Key', async () => {
+    const keys = captureIdempotencyKeys();
+    failCreateRequests();
+    const { user } = renderApp('/payments/new');
+    await fillValidForm(user);
+    await user.click(screen.getByRole('button', { name: 'Create payment' }));
+    await screen.findByRole('alert');
+    await user.type(screen.getByRole('textbox', { name: 'Amount' }), '1');
+
+    await user.click(screen.getByRole('button', { name: 'Create payment' }));
+
+    await waitFor(() => expect(keys).toHaveLength(2));
+    expect(keys[1]).toMatch(UUID_PATTERN);
+    expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('given a pending request, when the form is submitted, then disables the submit button', async () => {

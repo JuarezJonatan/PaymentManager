@@ -8,7 +8,7 @@ This file defines the mandatory conventions for `payment-manager-api`. All gener
 - Framework: Spring Boot 4.x (Spring Web MVC)
 - Build tool: Maven, invoked through the wrapper (`./mvnw`)
 - Base package: `com.jejuarez.paymentmanager`
-- Persistence: PostgreSQL (local via Docker Compose, `compose.yaml`) and deployed environments; in-memory H2 only for tests; Flyway migrations run only locally (see section 8)
+- Persistence: PostgreSQL (local via Docker Compose, `compose.yaml`) and deployed environments; in-memory H2 only for tests; Flyway migrations run only locally (see section 9)
 - API documentation: springdoc-openapi
 
 ### Common Commands
@@ -143,12 +143,20 @@ Restrictions:
 - This project uses `ProblemDetail`: `GlobalExceptionHandler` extends `ResponseEntityExceptionHandler` (so standard Spring MVC errors share the same format), and every custom handler sets `title`, `detail`, and a `timestamp` property; Spring fills `instance` with the request path.
 - Unexpected exceptions MUST be logged; internal details (stack traces, SQL messages) MUST NOT be exposed to clients.
 
-## 7. General Code Style
+## 7. Idempotency
+
+- `POST /payments` accepts an optional `Idempotency-Key` header (1 to 100 characters). Without it, every request creates a new payment.
+- The key and a SHA-256 hash of the normalized request (`PaymentRequestHasher`) are stored in the `payments` row, in the same insert as the payment, so they are atomic. A unique constraint on `idempotency_key` guarantees that a key creates at most one payment.
+- A request with a known key and the same hash returns the stored payment (`201`) without authorizing or storing another one. With a different hash it fails with `422 Unprocessable Content` (`IdempotencyKeyMismatchException`), following the IETF `Idempotency-Key` header draft.
+- When two requests with the same key run concurrently, the one that loses the unique constraint fails with `409 Conflict` (`IdempotencyKeyConflictException`); a later retry returns the stored payment.
+- `createdAt` is truncated to microseconds, the precision PostgreSQL stores, so a replayed response is identical to the original.
+
+## 8. General Code Style
 
 - Code MUST be self-explanatory through clear naming; avoid redundant comments.
 - Prefer immutability (`final` fields, records, unmodifiable collections).
 
-## 8. Database Migrations (Flyway)
+## 9. Database Migrations (Flyway)
 
 - Flyway MUST be enabled **only in the local environment**: the `local` profile (PostgreSQL via Docker Compose) and the `test` profile used by integration tests.
 - Flyway MUST be disabled in every other environment by setting `spring.flyway.enabled=false` in the base `application.yaml` and enabling it explicitly only in `application-local.yaml` and `src/test/resources/application-test.yaml`.

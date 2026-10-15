@@ -109,6 +109,7 @@ Rules:
 - Server data MUST NOT be copied into `useState`.
 - Query keys MUST be built exclusively through the feature's `queryKeys.ts` factory; inline array keys are forbidden.
 - After a mutation, update or invalidate the affected queries so the UI never shows stale data. A mutation that returns the updated resource writes it to its detail query with `setQueryData` and invalidates the lists. A failed mutation on a resource invalidates its detail query, because the error may mean its state changed elsewhere (e.g., a `409` on refund).
+- `useCreatePayment` sends an `Idempotency-Key` header (a `crypto.randomUUID()`). It reuses the key while the user resubmits the same values after a failure, so a retry of a request whose response was lost does not create a duplicate payment; changed values or a successful creation start a new key.
 - Mutation hooks own the cache updates. Pages own the user feedback (notifications, navigation) through the callbacks of `mutate`.
 - Filters and pagination are parsed from the URL with a validating function: unknown values fall back to their defaults, and default values are omitted from the URL. The page in the URL is one-based and is converted to zero-based for the backend. Changing a filter resets the page.
 - Paginated queries use `placeholderData: keepPreviousData` so the current page stays visible while the next one loads.

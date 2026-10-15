@@ -9,9 +9,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     Page<Payment> findByStatus(PaymentStatus status, Pageable pageable);
+
+    Optional<Payment> findByIdempotencyKey(String idempotencyKey);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Payment p SET p.status = :newStatus WHERE p.id = :id AND p.status = :expectedStatus")

@@ -16,18 +16,11 @@ public class PaymentMapper {
     private static final int AMOUNT_SCALE = 2;
 
     public Payment toEntity(CreatePaymentRequest request, PaymentStatus status) {
-        return toEntity(request, status, null, null);
-    }
-
-    public Payment toEntity(CreatePaymentRequest request, PaymentStatus status, String idempotencyKey,
-                            String requestHash) {
         return new Payment(
                 request.merchantId(),
                 request.amount().setScale(AMOUNT_SCALE, RoundingMode.UNNECESSARY),
                 request.currency(),
-                status,
-                idempotencyKey,
-                requestHash
+                status
         );
     }
 

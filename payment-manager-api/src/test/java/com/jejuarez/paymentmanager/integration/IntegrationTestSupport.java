@@ -1,5 +1,6 @@
 package com.jejuarez.paymentmanager.integration;
 
+import com.jejuarez.paymentmanager.persistence.repository.PaymentIdempotencyKeyRepository;
 import com.jejuarez.paymentmanager.persistence.repository.PaymentRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +20,12 @@ abstract class IntegrationTestSupport {
     @Autowired
     protected PaymentRepository paymentRepository;
 
+    @Autowired
+    protected PaymentIdempotencyKeyRepository idempotencyKeyRepository;
+
     @AfterEach
     void cleanUp() {
+        idempotencyKeyRepository.deleteAll();
         paymentRepository.deleteAll();
     }
 }

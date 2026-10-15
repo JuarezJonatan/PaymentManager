@@ -45,12 +45,6 @@ public class Payment {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(name = "idempotency_key", unique = true, updatable = false, length = 100)
-    private String idempotencyKey;
-
-    @Column(name = "request_hash", updatable = false, length = 64)
-    private String requestHash;
-
     public Payment(String id, String merchantId, BigDecimal amount, Currency currency, PaymentStatus status,
                    Instant createdAt) {
         this.id = id;
@@ -62,17 +56,10 @@ public class Payment {
     }
 
     public Payment(String merchantId, BigDecimal amount, Currency currency, PaymentStatus status) {
-        this(merchantId, amount, currency, status, null, null);
-    }
-
-    public Payment(String merchantId, BigDecimal amount, Currency currency, PaymentStatus status,
-                   String idempotencyKey, String requestHash) {
         this.merchantId = merchantId;
         this.amount = amount;
         this.currency = currency;
         this.status = status;
-        this.idempotencyKey = idempotencyKey;
-        this.requestHash = requestHash;
     }
 
     @PrePersist

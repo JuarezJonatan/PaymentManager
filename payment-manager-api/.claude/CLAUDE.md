@@ -8,12 +8,10 @@ This file defines the mandatory conventions for `payment-manager-api`. All gener
 - Framework: Spring Boot 4.x (Spring Web MVC)
 - Build tool: Maven, invoked through the wrapper (`./mvnw`)
 - Base package: `com.jejuarez.paymentmanager`
-- Persistence: PostgreSQL (local via Docker Compose, `compose.yaml` at the repository root) and deployed environments; in-memory H2 only for tests; Flyway migrations run only locally (see section 8)
+- Persistence: PostgreSQL (local via Docker Compose, `compose.yaml`) and deployed environments; in-memory H2 only for tests; Flyway migrations run only locally (see section 8)
 - API documentation: springdoc-openapi
 
 ### Common Commands
-
-Run `docker compose` from the repository root and `./mvnw` from this project:
 
 ```bash
 docker compose up -d         # start local PostgreSQL (host port 5433, override with POSTGRES_PORT)

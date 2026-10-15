@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file defines the mandatory conventions for the `payment-manager` backend (folder `backend/` inside the `payment-manager` repository). All generated or modified code under `backend/` MUST comply with these rules. The frontend has its own conventions in `frontend/.claude/CLAUDE.md`.
+This file defines the mandatory conventions for `payment-manager-api`. All generated or modified code in this project MUST comply with these rules.
 
 ## Project Context
 
@@ -13,7 +13,7 @@ This file defines the mandatory conventions for the `payment-manager` backend (f
 
 ### Common Commands
 
-Run `docker compose` from the repository root and `./mvnw` from `backend/`:
+Run `docker compose` from the repository root and `./mvnw` from this project:
 
 ```bash
 docker compose up -d         # start local PostgreSQL (host port 5433, override with POSTGRES_PORT)

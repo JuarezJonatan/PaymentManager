@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-This file defines the mandatory conventions for `payment-manager-frontend`. All generated or modified code under `frontend/` MUST comply with these rules. The backend conventions in `backend/.claude/CLAUDE.md` do NOT apply here, except where this file explicitly mirrors them.
+This file defines the mandatory conventions for `payment-manager-frontend`. All generated or modified code in this project MUST comply with these rules. The API conventions in `payment-manager-api/.claude/CLAUDE.md` do NOT apply here, except where this file explicitly mirrors them.
 
 ## Project Context
 
-- Project name: `payment-manager-frontend` (folder `frontend/` inside the `payment-manager` repository)
+- Project name: `payment-manager-frontend` (folder `payment-manager-frontend/` inside the `payment-manager` repository)
 - Language: TypeScript in `strict` mode
 - UI library: React (single-page application, client-side rendering only, no SSR)
 - Build tool: Vite, with npm as the package manager (Node 24)

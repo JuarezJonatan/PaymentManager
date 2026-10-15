@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import { notifications } from '@mantine/notifications';
 import { cleanup } from '@testing-library/react';
 import { server } from './mocks/server';
 
@@ -8,6 +9,7 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
+  notifications.clean();
   server.resetHandlers();
 });
 

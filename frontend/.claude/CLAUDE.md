@@ -84,6 +84,7 @@ Rules:
   - `fieldErrors`: the `errors` map of a validation failure (`field → message`), used with `setError` in forms.
 - Code outside `src/api` MUST narrow errors with `isApiError` and MUST NOT parse response bodies or read `Response` objects. Use `getErrorMessage(error)` to show an error and `isNotFoundError(error)` to detect a `404`.
 - Endpoint functions and the types of the backend DTOs live in one file per resource (e.g., `src/api/payments.ts`). Endpoint functions accept an optional `AbortSignal`, which query hooks forward from TanStack Query's `queryFn` context.
+- Backend enums are mirrored as `as const` arrays with a derived union type (e.g., `PAYMENT_STATUSES` and `PaymentStatus`), because TypeScript `enum` is not allowed. Add the array only when a value list is needed at runtime (options, validation); otherwise declare only the type.
 - Paginated endpoints return `Page<T>` (`src/api/page.ts`), whose `page` is zero-based.
 
 ## 3. State Management
@@ -99,7 +100,8 @@ Rules:
 
 - Server data MUST NOT be copied into `useState`.
 - Query keys MUST be built exclusively through the feature's `queryKeys.ts` factory; inline array keys are forbidden.
-- After a mutation, update or invalidate the affected queries so the UI never shows stale data.
+- After a mutation, update or invalidate the affected queries so the UI never shows stale data. A mutation that returns the updated resource writes it to its detail query with `setQueryData` and invalidates the lists. A failed mutation on a resource invalidates its detail query, because the error may mean its state changed elsewhere (e.g., a `409` on refund).
+- Mutation hooks own the cache updates. Pages own the user feedback (notifications, navigation) through the callbacks of `mutate`.
 - Filters and pagination are parsed from the URL with a validating function: unknown values fall back to their defaults, and default values are omitted from the URL. The page in the URL is one-based and is converted to zero-based for the backend. Changing a filter resets the page.
 - Paginated queries use `placeholderData: keepPreviousData` so the current page stays visible while the next one loads.
 - Query defaults live in `src/app/queryClient.ts`: queries retry server and network errors at most twice and never retry `4xx` errors; mutations never retry. Override them per query only with a clear reason.
@@ -117,6 +119,8 @@ Rules:
 - Every form MUST be validated with a zod schema connected through `zodResolver`. The form type MUST be inferred with `z.infer`; do NOT declare it separately.
 - Validation errors returned by the server MUST be shown next to the matching field with `setError`. Errors without a matching field are shown as a form-level message.
 - Submit buttons MUST be disabled while the request is pending.
+- The form component owns `useForm`. The page owns the mutation and passes `isSubmitting`, `serverErrorMessage`, and `serverFieldErrors` as props; the form applies them with `setError`, using `root.server` for errors without a matching field.
+- Mantine inputs that are not native inputs (`NumberInput`, `Select`, `Radio.Group`) are connected through `Controller`. `NumberInput` passes its raw value to the form, so the schema can tell an empty field from an incomplete number.
 
 ## 5. UI and UX
 
@@ -125,7 +129,7 @@ Rules:
 - Colors, spacing, and fonts MUST come from the theme defined in `src/app/theme.ts`; do NOT hardcode values.
 - Every data view MUST handle its loading, error, and empty states explicitly. Use `LoadingState` and `ErrorState` (with a Retry action) from `src/shared/components`. A detail view shows a not-found state, without Retry, when the resource returns `404`.
 - User feedback for mutations MUST use Mantine notifications.
-- Destructive or irreversible actions MUST ask for confirmation before running.
+- Destructive or irreversible actions MUST ask for confirmation before running, in a Mantine `Modal` that states the consequence. The modal cannot be dismissed while the request is pending, and closes when it settles.
 - Interactive elements MUST be accessible: use semantic elements, associate every input with a label, and keep keyboard navigation working.
 - Formatting of numbers, currencies, and dates MUST go through `src/shared/lib/format.ts` (`formatAmount`, `formatDateTime`); do NOT call `Intl` inline in components. Formatting uses the fixed `en-US` locale, and tests run with `TZ=UTC`.
 
@@ -143,12 +147,14 @@ Tests follow the same BDD principles as the backend.
   - `render(ui, { route })` renders a single component inside a memory router.
   - `renderApp(route)` renders the real routes, for page and navigation tests.
   - Both return `user` (a `userEvent` instance), the `router`, and a fresh `QueryClient` without retries, so tests never share cache.
+- The test theme sets `hideDetached: false` on `Popover`, because jsdom has no layout and Mantine would hide every dropdown. Notifications are cleared after each test.
 - Mock the network with MSW handlers. Do NOT mock `fetch`, api functions, or TanStack Query hooks.
   - Default handlers live in `tests/mocks/handlers.ts`; a test overrides them with `server.use(...)`, and they are reset after each test.
   - Unhandled requests fail the test (`onUnhandledFrame: 'error'`), so every request a test triggers MUST have a handler.
   - Build response data with the builders in `tests/mocks` (e.g., `aPayment(overrides)`, `aPage(content, overrides)`) instead of literal objects.
   - Handlers match the URL the browser calls, including the `/api` prefix (e.g., `http.get('/api/payments', ...)`).
 - Failure scenarios MUST assert that the UI state did not change, not only that an error message appeared.
+- To assert which requests were sent (or that none was), record them with `server.events.on('request:start', ...)` and remove the listeners after each test.
 - Unit and component test files live next to the code they test, named `<Name>.test.ts(x)`. Shared setup and MSW handlers live in `tests/`.
 
 ## 7. General Code Style

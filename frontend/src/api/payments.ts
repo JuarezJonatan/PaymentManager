@@ -4,11 +4,30 @@ import type { Page } from './page';
 export const PAYMENT_STATUSES = ['APPROVED', 'REJECTED', 'REFUNDED'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
+export const CURRENCIES = [
+  'ARS',
+  'USD',
+  'EUR',
+  'BRL',
+  'CLP',
+  'UYU',
+  'PYG',
+  'BOB',
+  'PEN',
+  'COP',
+  'MXN',
+  'GBP',
+] as const;
+export type Currency = (typeof CURRENCIES)[number];
+
+export const SIMULATION_RESULTS = ['APPROVED', 'REJECTED'] as const;
+export type SimulationResult = (typeof SIMULATION_RESULTS)[number];
+
 export type Payment = {
   readonly id: string;
   readonly merchantId: string;
   readonly amount: number;
-  readonly currency: string;
+  readonly currency: Currency;
   readonly status: PaymentStatus;
   readonly createdAt: string;
 };
@@ -17,6 +36,13 @@ export type ListPaymentsParams = {
   readonly status?: PaymentStatus;
   readonly page: number;
   readonly size: number;
+};
+
+export type CreatePaymentRequest = {
+  readonly merchantId: string;
+  readonly amount: number;
+  readonly currency: Currency;
+  readonly simulationResult: SimulationResult;
 };
 
 export function isPaymentStatus(value: unknown): value is PaymentStatus {
@@ -36,4 +62,12 @@ export function listPayments(
 
 export function getPayment(id: string, signal?: AbortSignal): Promise<Payment> {
   return request<Payment>(`/payments/${encodeURIComponent(id)}`, { signal });
+}
+
+export function createPayment(payment: CreatePaymentRequest): Promise<Payment> {
+  return request<Payment>('/payments', { method: 'POST', body: payment });
+}
+
+export function refundPayment(id: string): Promise<Payment> {
+  return request<Payment>(`/payments/${encodeURIComponent(id)}/refund`, { method: 'POST' });
 }

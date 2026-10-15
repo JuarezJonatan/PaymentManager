@@ -8,7 +8,7 @@ This file defines the mandatory conventions for `payment-manager-frontend`, the 
 - Language: TypeScript in `strict` mode
 - UI library: React (single-page application, client-side rendering only, no SSR)
 - Build tool: Vite, with npm as the package manager (Node 24)
-- Styling: Tailwind CSS with shadcn/ui components
+- UI components and styling: Mantine (`@mantine/core`, `@mantine/hooks`, `@mantine/notifications`, `@mantine/modals`) with `postcss-preset-mantine`
 - Server state: TanStack Query
 - Routing: React Router (library mode)
 - Forms and validation: react-hook-form + zod
@@ -47,11 +47,11 @@ src/
 │       └── queryKeys.ts  # query key factory of the feature
 ├── shared/
 │   ├── components/       # cross-feature components (ErrorState, EmptyState, PageLoader)
-│   ├── ui/               # shadcn/ui generated components
-│   └── lib/              # cross-feature utilities (formatting, cn helper)
-└── app/                  # router, providers, and the root App component
+│   └── lib/              # cross-feature utilities (formatting)
+└── app/                  # router, providers (MantineProvider, QueryClientProvider), theme, and the root App component
 tests/
-├── setup.ts              # Testing Library and MSW setup
+├── setup.ts              # Testing Library, MSW, and jsdom polyfills required by Mantine (matchMedia, ResizeObserver)
+├── render.tsx            # custom render that wraps components in MantineProvider and QueryClientProvider
 ├── mocks/                # MSW handlers and test data builders
 └── e2e/                  # Playwright specs
 ```
@@ -93,7 +93,7 @@ Each kind of state has exactly one home. A global store (Redux, Zustand, or a st
 | Server data (payment list, payment detail) | TanStack Query cache |
 | Filters and pagination | URL search params (`useSearchParams`) |
 | Form values and errors | react-hook-form |
-| Local UI state (open dialog, etc.) | `useState` in the owning component |
+| Local UI state (open modal, etc.) | `useState` or `useDisclosure` in the owning component |
 
 Rules:
 
@@ -111,10 +111,12 @@ Rules:
 
 ## 6. UI and UX
 
-- Use shadcn/ui components from `src/shared/ui` and Tailwind utility classes. Do NOT add another component library or CSS-in-JS solution. Use the `cn` helper to compose conditional classes.
+- Use Mantine components and layout primitives (`AppShell`, `Stack`, `Group`, `Table`, `Badge`, `Modal`, etc.). Do NOT add another component library, Tailwind, or a CSS-in-JS solution.
+- Styling MUST use, in this order of preference: component props (`variant`, `color`, `size`), Mantine style props (`mt`, `p`, `c`, etc.), and CSS Modules (`<Component>.module.css`) for anything else. Inline `style` objects are forbidden.
+- Colors, spacing, and fonts MUST come from the theme defined in `src/app/theme.ts`; do NOT hardcode values.
 - Every data view MUST handle its loading, error, and empty states explicitly.
-- User feedback for mutations MUST use toast notifications. A `REJECTED` payment is a valid business outcome, not an error: show it as a warning, not as a failure.
-- Destructive or irreversible actions (refund) MUST ask for confirmation in a dialog.
+- User feedback for mutations MUST use notifications from `@mantine/notifications`. A `REJECTED` payment is a valid business outcome, not an error: show it as a warning, not as a failure.
+- Destructive or irreversible actions (refund) MUST ask for confirmation with `modals.openConfirmModal` from `@mantine/modals`.
 - The refund action MUST only be shown for payments with status `APPROVED`.
 - Interactive elements MUST be accessible: use semantic elements, associate every input with a label, and keep keyboard navigation working.
 
@@ -136,6 +138,7 @@ Tests follow the same BDD principles as the backend.
 - Each test MUST verify a single behavior.
 - Query elements the way a user finds them: `getByRole`, `getByLabelText`, `getByText`. `getByTestId` is a last resort.
 - Simulate user interaction with `@testing-library/user-event`, not `fireEvent`.
+- Render components with the custom `render` from `tests/render.tsx`, never with Testing Library's `render` directly, so every test runs inside `MantineProvider` and a fresh `QueryClient`.
 - Mock the network with MSW handlers. Do NOT mock `fetch`, api functions, or TanStack Query hooks.
 - Failure scenarios MUST assert that the UI state did not change (e.g., after a `409` on refund, the status is still shown as before), not only that an error message appeared.
 - Unit and component test files live next to the code they test, named `<Name>.test.ts(x)`. Shared setup, MSW handlers, and Playwright specs live in `tests/`.

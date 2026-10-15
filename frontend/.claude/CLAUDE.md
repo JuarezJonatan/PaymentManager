@@ -74,6 +74,16 @@ Rules:
 - Use named exports only. Default exports are forbidden, except where a tool requires them (e.g., config files).
 - Use function components only.
 
+### API Client
+
+- Endpoint functions MUST call `request<T>(path, options)` from `src/api/httpClient.ts`, passing a path relative to the API (e.g., `/payments`). The client prepends `/api`, serializes the body as JSON, and parses the response.
+- In development, the Vite dev server proxies `/api/*` to the backend and strips the `/api` prefix. The target defaults to `http://localhost:8080` and can be overridden with the `API_PROXY_TARGET` environment variable.
+- The backend reports errors as `ProblemDetail` (RFC 9457). `request` converts every failure into an `ApiError`:
+  - `status`: the HTTP status, or `null` for a network failure (`isNetworkError`).
+  - `title` and `detail`: taken from the `ProblemDetail`; `detail` is the message to show to the user.
+  - `fieldErrors`: the `errors` map of a validation failure (`field → message`), used with `setError` in forms.
+- Code outside `src/api` MUST narrow errors with `isApiError` and MUST NOT parse response bodies or read `Response` objects.
+
 ## 3. State Management
 
 Each kind of state has exactly one home. A global store (Redux, Zustand, or a state Context) MUST NOT be introduced.
@@ -120,6 +130,9 @@ Tests follow the same BDD principles as the backend.
 - Simulate user interaction with `@testing-library/user-event`, not `fireEvent`.
 - Render components with the custom `render` from `tests/render.tsx`, never with Testing Library's `render` directly, so every test runs inside the app providers.
 - Mock the network with MSW handlers. Do NOT mock `fetch`, api functions, or TanStack Query hooks.
+  - Default handlers live in `tests/mocks/handlers.ts`; a test overrides them with `server.use(...)`, and they are reset after each test.
+  - Unhandled requests fail the test (`onUnhandledFrame: 'error'`), so every request a test triggers MUST have a handler.
+  - Handlers match the URL the browser calls, including the `/api` prefix (e.g., `http.get('/api/payments', ...)`).
 - Failure scenarios MUST assert that the UI state did not change, not only that an error message appeared.
 - Unit and component test files live next to the code they test, named `<Name>.test.ts(x)`. Shared setup and MSW handlers live in `tests/`.
 

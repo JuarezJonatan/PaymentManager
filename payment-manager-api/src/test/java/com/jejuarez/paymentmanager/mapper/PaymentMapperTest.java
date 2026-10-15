@@ -40,19 +40,6 @@ class PaymentMapperTest {
     }
 
     @Test
-    @DisplayName("Keeps the idempotency key and the request hash in the new payment")
-    void givenIdempotencyKey_whenToEntity_thenReturnsNewPaymentWithKeyAndRequestHash() {
-        CreatePaymentRequest request = new CreatePaymentRequest(
-                "COMMERCE_001", new BigDecimal("15000"), Currency.ARS, SimulationResult.APPROVED);
-
-        Payment payment = paymentMapper.toEntity(request, PaymentStatus.APPROVED, "key-001", "a".repeat(64));
-
-        assertThat(payment.getIdempotencyKey()).isEqualTo("key-001");
-        assertThat(payment.getRequestHash()).isEqualTo("a".repeat(64));
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.APPROVED);
-    }
-
-    @Test
     @DisplayName("Normalizes the amount to two decimals")
     void givenIntegerAmount_whenToEntity_thenAmountHasTwoDecimals() {
         CreatePaymentRequest request = new CreatePaymentRequest(

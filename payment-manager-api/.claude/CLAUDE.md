@@ -20,6 +20,8 @@ docker compose up -d         # start local PostgreSQL (host port 5433, override 
 ./mvnw spring-boot:run       # start the application
 ```
 
+Request examples live in `requests/`: a Postman collection (`payment-manager.postman_collection.json`, with a test per request) and `curl.md`. They MUST be updated whenever an endpoint, its parameters, or its responses change.
+
 The `Dockerfile` builds the runnable image. The full stack (`compose.yaml` at the repository root) includes this project's `compose.yaml` and runs the image with the `local` profile, pointing it to the `postgres` service.
 
 ## 1. Layered Architecture

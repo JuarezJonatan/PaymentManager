@@ -39,6 +39,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public static final String RESOURCE_NOT_FOUND = "Resource not found";
     public static final String PAYMENT_NOT_REFUNDABLE = "Payment cannot be refunded";
     public static final String IDEMPOTENCY_KEY_CONFLICT = "Idempotency key conflict";
+    public static final String IDEMPOTENCY_KEY_MISMATCH = "Idempotency key reused";
     public static final String AN_UNEXPECTED_ERROR_OCCURRED = "An unexpected error occurred";
     public static final String UNEXPECTED_ERROR = "Unexpected error";
     public static final String INVALID = "is invalid";
@@ -57,6 +58,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IdempotencyKeyConflictException.class)
     public ProblemDetail handleIdempotencyKeyConflict(IdempotencyKeyConflictException exception) {
         return problemDetail(HttpStatus.CONFLICT, IDEMPOTENCY_KEY_CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(IdempotencyKeyMismatchException.class)
+    public ProblemDetail handleIdempotencyKeyMismatch(IdempotencyKeyMismatchException exception) {
+        return problemDetail(HttpStatus.UNPROCESSABLE_CONTENT, IDEMPOTENCY_KEY_MISMATCH, exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

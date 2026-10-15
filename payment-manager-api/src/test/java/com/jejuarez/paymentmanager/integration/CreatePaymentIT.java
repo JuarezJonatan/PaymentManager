@@ -37,8 +37,8 @@ class CreatePaymentIT extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("Returns 409 and keeps the original payment when the Idempotency-Key is reused with a different request")
-    void givenIdempotencyKeyReusedWithDifferentRequest_whenCreatePayment_thenReturnsConflictAndKeepsOriginalPayment()
+    @DisplayName("Returns 422 and keeps the original payment when the Idempotency-Key is reused with a different request")
+    void givenIdempotencyKeyReusedWithDifferentRequest_whenCreatePayment_thenReturnsUnprocessableContentAndKeepsOriginalPayment()
             throws Exception {
         createWithIdempotencyKey(APPROVED_REQUEST_BODY).andExpect(status().isCreated());
         String differentBody = """
@@ -46,8 +46,8 @@ class CreatePaymentIT extends IntegrationTestSupport {
                 """;
 
         createWithIdempotencyKey(differentBody)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.title").value("Idempotency key conflict"));
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.title").value("Idempotency key reused"));
 
         assertThat(paymentRepository.findAll())
                 .singleElement()

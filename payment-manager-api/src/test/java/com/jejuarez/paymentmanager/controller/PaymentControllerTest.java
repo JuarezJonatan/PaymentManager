@@ -7,6 +7,7 @@ import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyConflictException;
+import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyMismatchException;
 import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.service.PaymentService;
@@ -112,10 +113,27 @@ class PaymentControllerTest {
     }
 
     @Test
-    @DisplayName("POST /payments returns 409 ProblemDetail when the Idempotency-Key was used with a different request")
-    void givenIdempotencyKeyUsedWithDifferentRequest_whenCreatePayment_thenReturnsConflictProblemDetail() throws Exception {
+    @DisplayName("POST /payments returns 422 ProblemDetail when the Idempotency-Key was used with a different request")
+    void givenIdempotencyKeyUsedWithDifferentRequest_whenCreatePayment_thenReturnsUnprocessableContentProblemDetail()
+            throws Exception {
         given(paymentService.create(any(CreatePaymentRequest.class), eq(IDEMPOTENCY_KEY)))
-                .willThrow(IdempotencyKeyConflictException.reusedWithDifferentRequest(IDEMPOTENCY_KEY));
+                .willThrow(new IdempotencyKeyMismatchException(IDEMPOTENCY_KEY));
+
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(VALID_REQUEST_BODY)
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Idempotency key reused"))
+                .andExpect(jsonPath("$.detail").value(
+                        "Idempotency-Key '%s' was already used with a different request".formatted(IDEMPOTENCY_KEY)))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    @DisplayName("POST /payments returns 409 ProblemDetail when a request with the same Idempotency-Key is being processed")
+    void givenConcurrentRequestWithSameIdempotencyKey_whenCreatePayment_thenReturnsConflictProblemDetail() throws Exception {
+        given(paymentService.create(any(CreatePaymentRequest.class), eq(IDEMPOTENCY_KEY)))
+                .willThrow(new IdempotencyKeyConflictException(IDEMPOTENCY_KEY));
 
         mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(VALID_REQUEST_BODY)
                         .header("Idempotency-Key", IDEMPOTENCY_KEY))
@@ -123,8 +141,7 @@ class PaymentControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Idempotency key conflict"))
                 .andExpect(jsonPath("$.detail").value(
-                        "Idempotency-Key '%s' was already used with a different request".formatted(IDEMPOTENCY_KEY)))
-                .andExpect(jsonPath("$.timestamp").exists());
+                        "A request with Idempotency-Key '%s' is already being processed".formatted(IDEMPOTENCY_KEY)));
     }
 
     @Test

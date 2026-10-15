@@ -9,6 +9,7 @@ import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyConflictException;
+import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyMismatchException;
 import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.mapper.PaymentMapper;
@@ -121,15 +122,15 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("Throws IdempotencyKeyConflictException and stores nothing when the key was used with a different request")
-    void givenIdempotencyKeyUsedWithDifferentRequest_whenCreate_thenThrowsIdempotencyKeyConflictException() {
+    @DisplayName("Throws IdempotencyKeyMismatchException and stores nothing when the key was used with a different request")
+    void givenIdempotencyKeyUsedWithDifferentRequest_whenCreate_thenThrowsIdempotencyKeyMismatchException() {
         CreatePaymentRequest request = anApprovedRequest();
         given(requestHasher.hash(request)).willReturn(REQUEST_HASH);
         given(paymentRepository.findByIdempotencyKey(IDEMPOTENCY_KEY))
                 .willReturn(Optional.of(aPaymentWithIdempotencyKey("b".repeat(64))));
 
         assertThatThrownBy(() -> paymentService.create(request, IDEMPOTENCY_KEY))
-                .isInstanceOf(IdempotencyKeyConflictException.class)
+                .isInstanceOf(IdempotencyKeyMismatchException.class)
                 .hasMessage("Idempotency-Key '%s' was already used with a different request".formatted(IDEMPOTENCY_KEY));
         then(paymentRepository).should(never()).saveAndFlush(any());
     }

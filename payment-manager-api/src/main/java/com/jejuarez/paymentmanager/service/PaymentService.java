@@ -1,6 +1,7 @@
 package com.jejuarez.paymentmanager.service;
 
 import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyConflictException;
+import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyMismatchException;
 import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.dto.request.CreatePaymentRequest;
@@ -45,7 +46,7 @@ public class PaymentService {
 
     private PaymentResponse replay(Payment existingPayment, String idempotencyKey, String requestHash) {
         if (!existingPayment.getRequestHash().equals(requestHash)) {
-            throw IdempotencyKeyConflictException.reusedWithDifferentRequest(idempotencyKey);
+            throw new IdempotencyKeyMismatchException(idempotencyKey);
         }
         return paymentMapper.toResponse(existingPayment);
     }
@@ -57,7 +58,7 @@ public class PaymentService {
         try {
             return paymentMapper.toResponse(paymentRepository.saveAndFlush(newPayment));
         } catch (DataIntegrityViolationException exception) {
-            throw IdempotencyKeyConflictException.concurrentRequest(idempotencyKey);
+            throw new IdempotencyKeyConflictException(idempotencyKey);
         }
     }
 

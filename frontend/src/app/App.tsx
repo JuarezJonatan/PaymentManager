@@ -1,9 +1,15 @@
-import { Container, Title } from '@mantine/core';
+import { createBrowserRouter, RouterProvider } from 'react-router';
+import { AppProviders } from './AppProviders';
+import { createQueryClient } from './queryClient';
+import { routes } from './routes';
+
+const queryClient = createQueryClient();
+const router = createBrowserRouter(routes);
 
 export function App() {
   return (
-    <Container py="xl">
-      <Title order={1}>Payment Manager</Title>
-    </Container>
+    <AppProviders queryClient={queryClient}>
+      <RouterProvider router={router} />
+    </AppProviders>
   );
 }

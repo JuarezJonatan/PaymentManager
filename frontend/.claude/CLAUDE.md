@@ -45,7 +45,7 @@ src/
 ├── shared/
 │   ├── components/       # cross-feature components
 │   └── lib/              # cross-feature utilities
-└── app/                  # router, providers, theme, and the root App component
+└── app/                  # routes, providers, query client, theme, layout, and app-level pages
 tests/
 ├── setup.ts              # global test setup
 ├── render.tsx            # custom render that wraps components in the app providers
@@ -98,6 +98,14 @@ Rules:
 - Server data MUST NOT be copied into `useState`.
 - Query keys MUST be built exclusively through the feature's `queryKeys.ts` factory; inline array keys are forbidden.
 - After a mutation, update or invalidate the affected queries so the UI never shows stale data.
+- Query defaults live in `src/app/queryClient.ts`: queries retry server and network errors at most twice and never retry `4xx` errors; mutations never retry. Override them per query only with a clear reason.
+
+### Routing
+
+- All routes are declared in `src/app/routes.tsx` as children of `AppLayout`, which renders the header and the page through `<Outlet />`.
+- A feature exposes its pages from `features/<feature>/pages`; `routes.tsx` is the only place that maps paths to pages.
+- Internal navigation MUST use React Router (`Link`, `NavLink`, `useNavigate`). Mantine components that navigate use `component={Link}` (e.g., `<Button component={Link} to="/">`); plain `<a href>` is forbidden for internal links.
+- Unknown paths render `NotFoundPage`; unexpected render errors are caught by `RouteErrorPage`.
 
 ## 4. Forms and Validation
 
@@ -126,7 +134,10 @@ Tests follow the same BDD principles as the backend.
 - Each test MUST verify a single behavior.
 - Query elements the way a user finds them: `getByRole`, `getByLabelText`, `getByText`. `getByTestId` is a last resort.
 - Simulate user interaction with `@testing-library/user-event`, not `fireEvent`.
-- Render components with the custom `render` from `tests/render.tsx`, never with Testing Library's `render` directly, so every test runs inside the app providers.
+- Render with the helpers from `tests/render.tsx`, never with Testing Library's `render` directly, so every test runs inside the app providers:
+  - `render(ui, { route })` renders a single component inside a memory router.
+  - `renderApp(route)` renders the real routes, for page and navigation tests.
+  - Both return `user` (a `userEvent` instance), the `router`, and a fresh `QueryClient` without retries, so tests never share cache.
 - Mock the network with MSW handlers. Do NOT mock `fetch`, api functions, or TanStack Query hooks.
   - Default handlers live in `tests/mocks/handlers.ts`; a test overrides them with `server.use(...)`, and they are reset after each test.
   - Unhandled requests fail the test (`onUnhandledFrame: 'error'`), so every request a test triggers MUST have a handler.

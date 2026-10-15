@@ -4,27 +4,11 @@ import type { Page } from './page';
 export const PAYMENT_STATUSES = ['APPROVED', 'REJECTED', 'REFUNDED'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const CURRENCIES = [
-  'ARS',
-  'USD',
-  'EUR',
-  'BRL',
-  'CLP',
-  'UYU',
-  'PYG',
-  'BOB',
-  'PEN',
-  'COP',
-  'MXN',
-  'GBP',
-] as const;
-export type Currency = (typeof CURRENCIES)[number];
-
 export type Payment = {
   readonly id: string;
   readonly merchantId: string;
   readonly amount: number;
-  readonly currency: Currency;
+  readonly currency: string;
   readonly status: PaymentStatus;
   readonly createdAt: string;
 };

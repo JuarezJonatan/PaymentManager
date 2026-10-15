@@ -12,7 +12,7 @@ This file defines the mandatory conventions for `payment-manager-frontend`. All 
 - Server state: TanStack Query
 - Routing: React Router (library mode)
 - Forms and validation: react-hook-form + zod
-- Testing: Vitest + Testing Library + MSW
+- Testing: Vitest + Testing Library + MSW; end-to-end tests with Playwright
 
 Exact versions are defined in `package.json`, which is the single source of truth.
 
@@ -22,11 +22,18 @@ Exact versions are defined in `package.json`, which is the single source of trut
 npm install          # install dependencies
 npm run dev          # start the dev server
 npm run test         # run unit and component tests (Vitest)
+npm run test:e2e     # run end-to-end tests (Playwright) against the running full stack
 npm run lint         # run ESLint
 npm run build        # type-check and build for production
 ```
 
 Every change MUST pass `npm run lint`, `npm run test`, and `npm run build` before it is merged.
+
+### Docker
+
+- The `Dockerfile` builds the app and serves it with nginx (`nginx.conf`), which falls back to `index.html` for client-side routes and proxies `/api/*` to the `api` service, stripping the `/api` prefix like the Vite dev server.
+- The proxy forwards the original `Host` header (`$http_host`), so the backend sees requests from the app as same-origin.
+- The full stack (PostgreSQL, API, and frontend) is defined in `compose.yaml` at the repository root and started with `docker compose up -d --build` from there. The frontend is served at `http://localhost:3000` (override with `WEB_PORT`).
 
 ## 1. Folder Structure
 
@@ -46,6 +53,7 @@ src/
 │   ├── components/       # cross-feature components
 │   └── lib/              # cross-feature utilities
 └── app/                  # routes, providers, query client, theme, layout, and app-level pages
+e2e/                      # Playwright specs and their support helpers
 tests/
 ├── setup.ts              # global test setup
 ├── render.tsx            # custom render that wraps components in the app providers
@@ -156,6 +164,14 @@ Tests follow the same BDD principles as the backend.
 - Failure scenarios MUST assert that the UI state did not change, not only that an error message appeared.
 - To assert which requests were sent (or that none was), record them with `server.events.on('request:start', ...)` and remove the listeners after each test.
 - Unit and component test files live next to the code they test, named `<Name>.test.ts(x)`. Shared setup and MSW handlers live in `tests/`.
+
+### End-to-End Tests
+
+- End-to-end tests live in `e2e/`, named `<flow>.spec.ts`, and follow the same naming rules (`test.describe` for the flow, `test` with given / when / then).
+- They run against the real full stack, with no mocks. Start it first with `docker compose up -d --build` from the repository root. The base URL defaults to `http://localhost:3000` and can be overridden with `E2E_BASE_URL`.
+- The database is shared and keeps its data between runs, so tests MUST NOT depend on existing data or on totals. Each test creates the data it needs, through the API (`e2e/support`) when the creation is not the behavior under test, and uses a unique merchant ID.
+- Tests run serially (one worker), because they share the database.
+- Interact through roles and labels, as a user would. Mantine radio inputs are visually hidden, so click their label.
 
 ## 7. General Code Style
 

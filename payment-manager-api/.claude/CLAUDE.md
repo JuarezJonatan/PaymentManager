@@ -20,6 +20,8 @@ docker compose up -d         # start local PostgreSQL (host port 5433, override 
 ./mvnw spring-boot:run       # start the application
 ```
 
+The `Dockerfile` builds the runnable image. The full stack (`compose.yaml` at the repository root) includes this project's `compose.yaml` and runs the image with the `local` profile, pointing it to the `postgres` service.
+
 ## 1. Layered Architecture
 
 The application MUST follow a strict three-layer architecture: **Controller → Service → Repository**.

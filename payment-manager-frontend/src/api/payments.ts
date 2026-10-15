@@ -64,8 +64,17 @@ export function getPayment(id: string, signal?: AbortSignal): Promise<Payment> {
   return request<Payment>(`/payments/${encodeURIComponent(id)}`, { signal });
 }
 
-export function createPayment(payment: CreatePaymentRequest): Promise<Payment> {
-  return request<Payment>('/payments', { method: 'POST', body: payment });
+export const IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key';
+
+export function createPayment(
+  payment: CreatePaymentRequest,
+  idempotencyKey: string,
+): Promise<Payment> {
+  return request<Payment>('/payments', {
+    method: 'POST',
+    body: payment,
+    headers: { [IDEMPOTENCY_KEY_HEADER]: idempotencyKey },
+  });
 }
 
 export function refundPayment(id: string): Promise<Payment> {

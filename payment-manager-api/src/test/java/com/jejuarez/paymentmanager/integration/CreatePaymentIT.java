@@ -5,15 +5,67 @@ import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.ResultActions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @DisplayName("Create payment (POST /payments) integration")
 class CreatePaymentIT extends IntegrationTestSupport {
+
+    private static final String IDEMPOTENCY_KEY = "4f9c2a7e-1b3d-4c5e-8f6a-7b8c9d0e1f2a";
+    private static final String APPROVED_REQUEST_BODY = """
+            {"merchantId": "COMMERCE_001", "amount": 15000, "currency": "ARS", "simulationResult": "APPROVED"}
+            """;
+
+    @Test
+    @DisplayName("Returns the same payment and stores only one when a request is retried with the same Idempotency-Key")
+    void givenRequestRetriedWithSameIdempotencyKey_whenCreatePayment_thenStoresOnlyOnePayment() throws Exception {
+        String firstResponse = createWithIdempotencyKey(APPROVED_REQUEST_BODY)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        createWithIdempotencyKey(APPROVED_REQUEST_BODY)
+                .andExpect(status().isCreated())
+                .andExpect(content().json(firstResponse));
+
+        assertThat(paymentRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Returns 409 and keeps the original payment when the Idempotency-Key is reused with a different request")
+    void givenIdempotencyKeyReusedWithDifferentRequest_whenCreatePayment_thenReturnsConflictAndKeepsOriginalPayment()
+            throws Exception {
+        createWithIdempotencyKey(APPROVED_REQUEST_BODY).andExpect(status().isCreated());
+        String differentBody = """
+                {"merchantId": "COMMERCE_001", "amount": 15000, "currency": "ARS", "simulationResult": "REJECTED"}
+                """;
+
+        createWithIdempotencyKey(differentBody)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Idempotency key conflict"));
+
+        assertThat(paymentRepository.findAll())
+                .singleElement()
+                .extracting(Payment::getStatus)
+                .isEqualTo(PaymentStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("Stores a new payment on every request without an Idempotency-Key")
+    void givenRequestsWithoutIdempotencyKey_whenCreatePaymentTwice_thenStoresTwoPayments() throws Exception {
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(APPROVED_REQUEST_BODY))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(APPROVED_REQUEST_BODY))
+                .andExpect(status().isCreated());
+
+        assertThat(paymentRepository.count()).isEqualTo(2);
+    }
 
     @Test
     @DisplayName("Stores an approved payment with a generated id and creation date")
@@ -67,5 +119,12 @@ class CreatePaymentIT extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.errors.amount").value("amount must be greater than zero"));
 
         assertThat(paymentRepository.count()).isZero();
+    }
+
+    private ResultActions createWithIdempotencyKey(String body) throws Exception {
+        return mockMvc.perform(post("/payments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Idempotency-Key", IDEMPOTENCY_KEY)
+                .content(body));
     }
 }

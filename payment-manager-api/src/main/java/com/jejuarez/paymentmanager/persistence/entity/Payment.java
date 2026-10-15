@@ -8,19 +8,18 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Entity
 @Table(name = "payments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
 public class Payment {
 
     private static final String ID_PREFIX = "pay_";
@@ -46,11 +45,34 @@ public class Payment {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    public Payment(String merchantId, BigDecimal amount, Currency currency, PaymentStatus status) {
+    @Column(name = "idempotency_key", unique = true, updatable = false, length = 100)
+    private String idempotencyKey;
+
+    @Column(name = "request_hash", updatable = false, length = 64)
+    private String requestHash;
+
+    public Payment(String id, String merchantId, BigDecimal amount, Currency currency, PaymentStatus status,
+                   Instant createdAt) {
+        this.id = id;
         this.merchantId = merchantId;
         this.amount = amount;
         this.currency = currency;
         this.status = status;
+        this.createdAt = createdAt;
+    }
+
+    public Payment(String merchantId, BigDecimal amount, Currency currency, PaymentStatus status) {
+        this(merchantId, amount, currency, status, null, null);
+    }
+
+    public Payment(String merchantId, BigDecimal amount, Currency currency, PaymentStatus status,
+                   String idempotencyKey, String requestHash) {
+        this.merchantId = merchantId;
+        this.amount = amount;
+        this.currency = currency;
+        this.status = status;
+        this.idempotencyKey = idempotencyKey;
+        this.requestHash = requestHash;
     }
 
     @PrePersist
@@ -59,7 +81,7 @@ public class Payment {
             id = ID_PREFIX + UUID.randomUUID();
         }
         if (createdAt == null) {
-            createdAt = Instant.now();
+            createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         }
     }
 }

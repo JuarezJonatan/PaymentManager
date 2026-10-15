@@ -6,6 +6,7 @@ import com.jejuarez.paymentmanager.dto.response.PageResponse;
 import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
+import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyConflictException;
 import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.service.PaymentService;
@@ -22,6 +23,8 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PaymentControllerTest {
 
     private static final String PAYMENT_ID = "pay_001";
+    private static final String IDEMPOTENCY_KEY = "4f9c2a7e-1b3d-4c5e-8f6a-7b8c9d0e1f2a";
     private static final String VALID_REQUEST_BODY = """
             {"merchantId": "COMMERCE_001", "amount": 15000, "currency": "ARS", "simulationResult": "APPROVED"}
             """;
@@ -82,7 +86,7 @@ class PaymentControllerTest {
     void givenValidRequest_whenCreatePayment_thenReturnsCreatedWithPayment() throws Exception {
         PaymentResponse payment = new PaymentResponse(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
                 Currency.ARS, PaymentStatus.APPROVED, Instant.parse("2026-10-08T15:00:00Z"));
-        given(paymentService.create(any(CreatePaymentRequest.class))).willReturn(payment);
+        given(paymentService.create(any(CreatePaymentRequest.class), isNull())).willReturn(payment);
 
         mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(VALID_REQUEST_BODY))
                 .andExpect(status().isCreated())
@@ -92,6 +96,48 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.currency").value("ARS"))
                 .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.createdAt").value("2026-10-08T15:00:00Z"));
+    }
+
+    @Test
+    @DisplayName("POST /payments passes the Idempotency-Key header to the service")
+    void givenIdempotencyKeyHeader_whenCreatePayment_thenPassesKeyToService() throws Exception {
+        PaymentResponse payment = new PaymentResponse(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"),
+                Currency.ARS, PaymentStatus.APPROVED, Instant.parse("2026-10-08T15:00:00Z"));
+        given(paymentService.create(any(CreatePaymentRequest.class), eq(IDEMPOTENCY_KEY))).willReturn(payment);
+
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(VALID_REQUEST_BODY)
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(PAYMENT_ID));
+    }
+
+    @Test
+    @DisplayName("POST /payments returns 409 ProblemDetail when the Idempotency-Key was used with a different request")
+    void givenIdempotencyKeyUsedWithDifferentRequest_whenCreatePayment_thenReturnsConflictProblemDetail() throws Exception {
+        given(paymentService.create(any(CreatePaymentRequest.class), eq(IDEMPOTENCY_KEY)))
+                .willThrow(IdempotencyKeyConflictException.reusedWithDifferentRequest(IDEMPOTENCY_KEY));
+
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(VALID_REQUEST_BODY)
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Idempotency key conflict"))
+                .andExpect(jsonPath("$.detail").value(
+                        "Idempotency-Key '%s' was already used with a different request".formatted(IDEMPOTENCY_KEY)))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    @DisplayName("POST /payments returns 400 with the header error and does not create the payment when the Idempotency-Key is too long")
+    void givenTooLongIdempotencyKey_whenCreatePayment_thenReturnsBadRequestWithHeaderError() throws Exception {
+        mockMvc.perform(post("/payments").contentType(MediaType.APPLICATION_JSON).content(VALID_REQUEST_BODY)
+                        .header("Idempotency-Key", "k".repeat(101)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors['Idempotency-Key']")
+                        .value("Idempotency-Key must be between 1 and 100 characters"))
+                .andExpect(jsonPath("$.timestamp").exists());
+        then(paymentService).shouldHaveNoInteractions();
     }
 
     @Test

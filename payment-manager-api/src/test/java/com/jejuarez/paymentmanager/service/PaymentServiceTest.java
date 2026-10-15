@@ -8,6 +8,7 @@ import com.jejuarez.paymentmanager.dto.response.PaymentResponse;
 import com.jejuarez.paymentmanager.persistence.entity.Currency;
 import com.jejuarez.paymentmanager.persistence.entity.Payment;
 import com.jejuarez.paymentmanager.persistence.entity.PaymentStatus;
+import com.jejuarez.paymentmanager.common.exception.IdempotencyKeyConflictException;
 import com.jejuarez.paymentmanager.common.exception.PaymentNotRefundableException;
 import com.jejuarez.paymentmanager.common.exception.ResourceNotFoundException;
 import com.jejuarez.paymentmanager.mapper.PaymentMapper;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +43,8 @@ import static org.mockito.Mockito.never;
 class PaymentServiceTest {
 
     private static final String PAYMENT_ID = "pay_001";
+    private static final String IDEMPOTENCY_KEY = "4f9c2a7e-1b3d-4c5e-8f6a-7b8c9d0e1f2a";
+    private static final String REQUEST_HASH = "a".repeat(64);
     private static final Instant CREATED_AT = Instant.parse("2026-10-08T15:00:00Z");
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 
@@ -52,6 +56,9 @@ class PaymentServiceTest {
 
     @Mock
     private PaymentAuthorizationSimulator authorizationSimulator;
+
+    @Mock
+    private PaymentRequestHasher requestHasher;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -70,9 +77,79 @@ class PaymentServiceTest {
         given(paymentRepository.save(newPayment)).willReturn(savedPayment);
         given(paymentMapper.toResponse(savedPayment)).willReturn(expectedResponse);
 
-        PaymentResponse response = paymentService.create(request);
+        PaymentResponse response = paymentService.create(request, null);
 
         assertThat(response).isEqualTo(expectedResponse);
+        then(paymentRepository).should(never()).findByIdempotencyKey(any());
+    }
+
+    @Test
+    @DisplayName("Stores the new payment with its idempotency key and request hash when the key was not used")
+    void givenUnusedIdempotencyKey_whenCreate_thenStoresPaymentWithKeyAndRequestHash() {
+        CreatePaymentRequest request = anApprovedRequest();
+        Payment newPayment = new Payment("COMMERCE_001", new BigDecimal("15000.00"), Currency.ARS,
+                PaymentStatus.APPROVED, IDEMPOTENCY_KEY, REQUEST_HASH);
+        Payment savedPayment = anApprovedPayment();
+        PaymentResponse expectedResponse = aPaymentResponseWithStatus(PaymentStatus.APPROVED);
+        given(requestHasher.hash(request)).willReturn(REQUEST_HASH);
+        given(paymentRepository.findByIdempotencyKey(IDEMPOTENCY_KEY)).willReturn(Optional.empty());
+        given(authorizationSimulator.authorize(SimulationResult.APPROVED)).willReturn(PaymentStatus.APPROVED);
+        given(paymentMapper.toEntity(request, PaymentStatus.APPROVED, IDEMPOTENCY_KEY, REQUEST_HASH)).willReturn(newPayment);
+        given(paymentRepository.saveAndFlush(newPayment)).willReturn(savedPayment);
+        given(paymentMapper.toResponse(savedPayment)).willReturn(expectedResponse);
+
+        PaymentResponse response = paymentService.create(request, IDEMPOTENCY_KEY);
+
+        assertThat(response).isEqualTo(expectedResponse);
+    }
+
+    @Test
+    @DisplayName("Returns the payment already created with the idempotency key without authorizing or storing another")
+    void givenIdempotencyKeyUsedWithSameRequest_whenCreate_thenReturnsExistingPayment() {
+        CreatePaymentRequest request = anApprovedRequest();
+        Payment existingPayment = aPaymentWithIdempotencyKey(REQUEST_HASH);
+        PaymentResponse expectedResponse = aPaymentResponseWithStatus(PaymentStatus.APPROVED);
+        given(requestHasher.hash(request)).willReturn(REQUEST_HASH);
+        given(paymentRepository.findByIdempotencyKey(IDEMPOTENCY_KEY)).willReturn(Optional.of(existingPayment));
+        given(paymentMapper.toResponse(existingPayment)).willReturn(expectedResponse);
+
+        PaymentResponse response = paymentService.create(request, IDEMPOTENCY_KEY);
+
+        assertThat(response).isEqualTo(expectedResponse);
+        then(authorizationSimulator).shouldHaveNoInteractions();
+        then(paymentRepository).should(never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("Throws IdempotencyKeyConflictException and stores nothing when the key was used with a different request")
+    void givenIdempotencyKeyUsedWithDifferentRequest_whenCreate_thenThrowsIdempotencyKeyConflictException() {
+        CreatePaymentRequest request = anApprovedRequest();
+        given(requestHasher.hash(request)).willReturn(REQUEST_HASH);
+        given(paymentRepository.findByIdempotencyKey(IDEMPOTENCY_KEY))
+                .willReturn(Optional.of(aPaymentWithIdempotencyKey("b".repeat(64))));
+
+        assertThatThrownBy(() -> paymentService.create(request, IDEMPOTENCY_KEY))
+                .isInstanceOf(IdempotencyKeyConflictException.class)
+                .hasMessage("Idempotency-Key '%s' was already used with a different request".formatted(IDEMPOTENCY_KEY));
+        then(paymentRepository).should(never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("Throws IdempotencyKeyConflictException when a concurrent request stores the same key first")
+    void givenConcurrentRequestWithSameIdempotencyKey_whenCreate_thenThrowsIdempotencyKeyConflictException() {
+        CreatePaymentRequest request = anApprovedRequest();
+        Payment newPayment = new Payment("COMMERCE_001", new BigDecimal("15000.00"), Currency.ARS,
+                PaymentStatus.APPROVED, IDEMPOTENCY_KEY, REQUEST_HASH);
+        given(requestHasher.hash(request)).willReturn(REQUEST_HASH);
+        given(paymentRepository.findByIdempotencyKey(IDEMPOTENCY_KEY)).willReturn(Optional.empty());
+        given(authorizationSimulator.authorize(SimulationResult.APPROVED)).willReturn(PaymentStatus.APPROVED);
+        given(paymentMapper.toEntity(request, PaymentStatus.APPROVED, IDEMPOTENCY_KEY, REQUEST_HASH)).willReturn(newPayment);
+        given(paymentRepository.saveAndFlush(newPayment))
+                .willThrow(new DataIntegrityViolationException("uk_payments_idempotency_key"));
+
+        assertThatThrownBy(() -> paymentService.create(request, IDEMPOTENCY_KEY))
+                .isInstanceOf(IdempotencyKeyConflictException.class)
+                .hasMessage("A request with Idempotency-Key '%s' is already being processed".formatted(IDEMPOTENCY_KEY));
     }
 
     @Test
@@ -180,6 +257,19 @@ class PaymentServiceTest {
         assertThatThrownBy(() -> paymentService.refund(PAYMENT_ID))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Payment with id 'pay_001' was not found");
+    }
+
+    private CreatePaymentRequest anApprovedRequest() {
+        return new CreatePaymentRequest("COMMERCE_001", new BigDecimal("15000"), Currency.ARS, SimulationResult.APPROVED);
+    }
+
+    private Payment aPaymentWithIdempotencyKey(String requestHash) {
+        return new Payment("COMMERCE_001", new BigDecimal("15000.00"), Currency.ARS, PaymentStatus.APPROVED,
+                IDEMPOTENCY_KEY, requestHash);
+    }
+
+    private PaymentResponse aPaymentResponseWithStatus(PaymentStatus status) {
+        return new PaymentResponse(PAYMENT_ID, "COMMERCE_001", new BigDecimal("15000.00"), Currency.ARS, status, CREATED_AT);
     }
 
     private Payment anApprovedPayment() {

@@ -86,8 +86,6 @@ Rules:
 
 ## 3. State Management
 
-Each kind of state has exactly one home. A global store (Redux, Zustand, or a state Context) MUST NOT be introduced.
-
 | Kind of state | Where it lives |
 |---------------|----------------|
 | Server data | TanStack Query cache |

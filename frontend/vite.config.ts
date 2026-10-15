@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: ['./tests/setup.ts'],
       css: true,
+      env: { TZ: 'UTC' },
     },
   };
 });

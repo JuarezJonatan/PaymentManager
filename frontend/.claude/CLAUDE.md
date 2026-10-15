@@ -82,7 +82,9 @@ Rules:
   - `status`: the HTTP status, or `null` for a network failure (`isNetworkError`).
   - `title` and `detail`: taken from the `ProblemDetail`; `detail` is the message to show to the user.
   - `fieldErrors`: the `errors` map of a validation failure (`field → message`), used with `setError` in forms.
-- Code outside `src/api` MUST narrow errors with `isApiError` and MUST NOT parse response bodies or read `Response` objects.
+- Code outside `src/api` MUST narrow errors with `isApiError` and MUST NOT parse response bodies or read `Response` objects. Use `getErrorMessage(error)` to show an error and `isNotFoundError(error)` to detect a `404`.
+- Endpoint functions and the types of the backend DTOs live in one file per resource (e.g., `src/api/payments.ts`). Endpoint functions accept an optional `AbortSignal`, which query hooks forward from TanStack Query's `queryFn` context.
+- Paginated endpoints return `Page<T>` (`src/api/page.ts`), whose `page` is zero-based.
 
 ## 3. State Management
 
@@ -98,6 +100,8 @@ Rules:
 - Server data MUST NOT be copied into `useState`.
 - Query keys MUST be built exclusively through the feature's `queryKeys.ts` factory; inline array keys are forbidden.
 - After a mutation, update or invalidate the affected queries so the UI never shows stale data.
+- Filters and pagination are parsed from the URL with a validating function: unknown values fall back to their defaults, and default values are omitted from the URL. The page in the URL is one-based and is converted to zero-based for the backend. Changing a filter resets the page.
+- Paginated queries use `placeholderData: keepPreviousData` so the current page stays visible while the next one loads.
 - Query defaults live in `src/app/queryClient.ts`: queries retry server and network errors at most twice and never retry `4xx` errors; mutations never retry. Override them per query only with a clear reason.
 
 ### Routing
@@ -105,6 +109,7 @@ Rules:
 - All routes are declared in `src/app/routes.tsx` as children of `AppLayout`, which renders the header and the page through `<Outlet />`.
 - A feature exposes its pages from `features/<feature>/pages`; `routes.tsx` is the only place that maps paths to pages.
 - Internal navigation MUST use React Router (`Link`, `NavLink`, `useNavigate`). Mantine components that navigate use `component={Link}` (e.g., `<Button component={Link} to="/">`); plain `<a href>` is forbidden for internal links.
+- `/` redirects to `/payments`.
 - Unknown paths render `NotFoundPage`; unexpected render errors are caught by `RouteErrorPage`.
 
 ## 4. Forms and Validation
@@ -118,11 +123,11 @@ Rules:
 - Use Mantine components and layout primitives. Do NOT add another component library, Tailwind, or a CSS-in-JS solution.
 - Styling MUST use, in this order of preference: component props (`variant`, `color`, `size`), Mantine style props (`mt`, `p`, `c`, etc.), and CSS Modules (`<Component>.module.css`) for anything else. Inline `style` objects are forbidden.
 - Colors, spacing, and fonts MUST come from the theme defined in `src/app/theme.ts`; do NOT hardcode values.
-- Every data view MUST handle its loading, error, and empty states explicitly.
+- Every data view MUST handle its loading, error, and empty states explicitly. Use `LoadingState` and `ErrorState` (with a Retry action) from `src/shared/components`. A detail view shows a not-found state, without Retry, when the resource returns `404`.
 - User feedback for mutations MUST use Mantine notifications.
 - Destructive or irreversible actions MUST ask for confirmation before running.
 - Interactive elements MUST be accessible: use semantic elements, associate every input with a label, and keep keyboard navigation working.
-- Formatting of numbers, currencies, and dates MUST go through `src/shared/lib`; do NOT call `Intl` inline in components.
+- Formatting of numbers, currencies, and dates MUST go through `src/shared/lib/format.ts` (`formatAmount`, `formatDateTime`); do NOT call `Intl` inline in components. Formatting uses the fixed `en-US` locale, and tests run with `TZ=UTC`.
 
 ## 6. Testing (BDD)
 
@@ -141,6 +146,7 @@ Tests follow the same BDD principles as the backend.
 - Mock the network with MSW handlers. Do NOT mock `fetch`, api functions, or TanStack Query hooks.
   - Default handlers live in `tests/mocks/handlers.ts`; a test overrides them with `server.use(...)`, and they are reset after each test.
   - Unhandled requests fail the test (`onUnhandledFrame: 'error'`), so every request a test triggers MUST have a handler.
+  - Build response data with the builders in `tests/mocks` (e.g., `aPayment(overrides)`, `aPage(content, overrides)`) instead of literal objects.
   - Handlers match the URL the browser calls, including the `/api` prefix (e.g., `http.get('/api/payments', ...)`).
 - Failure scenarios MUST assert that the UI state did not change, not only that an error message appeared.
 - Unit and component test files live next to the code they test, named `<Name>.test.ts(x)`. Shared setup and MSW handlers live in `tests/`.

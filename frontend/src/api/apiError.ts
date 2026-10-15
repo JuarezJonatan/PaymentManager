@@ -31,3 +31,13 @@ export class ApiError extends Error {
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
+
+const UNKNOWN_ERROR_MESSAGE = 'An unexpected error occurred';
+
+export function getErrorMessage(error: unknown): string {
+  return isApiError(error) ? error.detail : UNKNOWN_ERROR_MESSAGE;
+}
+
+export function isNotFoundError(error: unknown): boolean {
+  return isApiError(error) && error.status === 404;
+}

@@ -1,5 +1,5 @@
-import { Group, Pagination, Stack, Text, Title } from '@mantine/core';
-import { useSearchParams } from 'react-router';
+import { Button, Group, Pagination, Stack, Text, Title } from '@mantine/core';
+import { Link, useSearchParams } from 'react-router';
 import { getErrorMessage } from '@/api/apiError';
 import type { PaymentStatus } from '@/api/payments';
 import { ErrorState } from '@/shared/components/ErrorState';
@@ -38,7 +38,12 @@ export function PaymentsListPage() {
 
   return (
     <Stack gap="lg">
-      <Title order={1}>Payments</Title>
+      <Group justify="space-between">
+        <Title order={1}>Payments</Title>
+        <Button component={Link} to="/payments/new">
+          New payment
+        </Button>
+      </Group>
       <PaymentStatusFilter value={filters.status} onChange={changeStatus} />
       {paymentsQuery.isPending ? (
         <LoadingState label="Loading payments" />

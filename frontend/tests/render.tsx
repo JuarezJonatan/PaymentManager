@@ -1,3 +1,4 @@
+import { mergeThemeOverrides, Popover } from '@mantine/core';
 import { QueryClient } from '@tanstack/react-query';
 import { render as testingLibraryRender, type RenderOptions } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -5,6 +6,14 @@ import type { ReactElement } from 'react';
 import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router';
 import { AppProviders } from '@/app/AppProviders';
 import { routes } from '@/app/routes';
+import { theme } from '@/app/theme';
+
+// jsdom has no layout, so Mantine would hide every dropdown as detached from its target.
+const testTheme = mergeThemeOverrides(theme, {
+  components: {
+    Popover: Popover.extend({ defaultProps: { hideDetached: false } }),
+  },
+});
 
 type RenderWithProvidersOptions = Omit<RenderOptions, 'wrapper'> & {
   readonly route?: string;
@@ -32,7 +41,7 @@ function renderRouter(
     router,
     queryClient,
     ...testingLibraryRender(
-      <AppProviders queryClient={queryClient}>
+      <AppProviders queryClient={queryClient} theme={testTheme}>
         <RouterProvider router={router} />
       </AppProviders>,
       options,

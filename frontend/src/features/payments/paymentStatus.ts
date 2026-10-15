@@ -11,3 +11,7 @@ export const PAYMENT_STATUS_COLORS: Readonly<Record<PaymentStatus, string>> = {
   REJECTED: 'red',
   REFUNDED: 'gray',
 };
+
+export function isRefundable(status: PaymentStatus): boolean {
+  return status === 'APPROVED';
+}
